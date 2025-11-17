@@ -75,3 +75,6 @@ export const useAuth = () => {
   return context;
 };
 
+// Export ROLES for convenience
+export { ROLES } from '../config/roles';
+

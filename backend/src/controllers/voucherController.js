@@ -4,20 +4,38 @@ class VoucherController {
   // POST /api/vouchers/generate
   static async generate(req, res, next) {
     try {
-      const { quantity, issue_date } = req.body;
+      const { employee_ids, issue_date } = req.body;
+      const EmployeeModel = require('../models/employeeModel');
 
       // Validation
-      if (!quantity || !issue_date) {
+      if (!employee_ids || !Array.isArray(employee_ids) || employee_ids.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'quantity dan issue_date harus diisi'
+          message: 'employee_ids harus berupa array dan tidak boleh kosong'
         });
       }
 
-      if (quantity < 1 || quantity > 100) {
+      if (employee_ids.length > 100) {
         return res.status(400).json({
           success: false,
-          message: 'quantity harus antara 1-100'
+          message: 'Maksimal 100 karyawan per batch'
+        });
+      }
+
+      // Filter out invalid IDs
+      const validIds = employee_ids.filter(id => id && Number.isInteger(Number(id)));
+      
+      if (validIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Minimal 1 employee_id harus diisi'
+        });
+      }
+
+      if (!issue_date) {
+        return res.status(400).json({
+          success: false,
+          message: 'issue_date harus diisi'
         });
       }
 
@@ -30,15 +48,39 @@ class VoucherController {
         });
       }
 
-      // Generate vouchers
-      const vouchers = await VoucherModel.generateVouchers(quantity, issue_date);
+      // Check which employees already have voucher today
+      const employeesWithVoucher = [];
+      const employeesWithoutVoucher = [];
+      
+      for (const employeeId of validIds) {
+        const hasVoucher = await EmployeeModel.hasVoucherToday(employeeId, issue_date);
+        if (hasVoucher) {
+          const employee = await EmployeeModel.findById(employeeId);
+          employeesWithVoucher.push(employee?.name || `ID: ${employeeId}`);
+        } else {
+          employeesWithoutVoucher.push(employeeId);
+        }
+      }
+
+      // Generate vouchers only for employees without voucher today
+      const vouchers = await VoucherModel.generateVouchers(employeesWithoutVoucher, issue_date);
+
+      const message = vouchers.length > 0 
+        ? `${vouchers.length} voucher berhasil dibuat`
+        : 'Tidak ada voucher yang dibuat';
+      
+      const warning = employeesWithVoucher.length > 0
+        ? ` (${employeesWithVoucher.length} karyawan sudah memiliki voucher hari ini: ${employeesWithVoucher.join(', ')})`
+        : '';
 
       res.json({
         success: true,
-        message: `${quantity} vouchers generated successfully`,
+        message: message + warning,
         data: {
           vouchers,
-          total: vouchers.length
+          total: vouchers.length,
+          skipped: employeesWithVoucher.length,
+          skipped_employees: employeesWithVoucher
         }
       });
     } catch (error) {

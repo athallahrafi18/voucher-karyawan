@@ -3,9 +3,13 @@ import { buildUrl } from '../config/api';
 
 // Create axios instance
 const api = axios.create({
-  timeout: 10000,
+  timeout: 30000, // Increased to 30 seconds for Railway
   headers: {
     'Content-Type': 'application/json',
+  },
+  // Additional config for Railway
+  validateStatus: function (status) {
+    return status >= 200 && status < 500; // Accept 4xx as valid responses
   },
 });
 
@@ -26,17 +30,76 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      console.error('API Error: Network Error - Check your internet connection and API URL');
+      console.error('API URL:', error.config?.url);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        config: {
+          method: error.config?.method,
+          url: error.config?.url,
+          timeout: error.config?.timeout,
+        }
+      });
+    } else if (error.code === 'ECONNABORTED') {
+      console.error('API Error: Request timeout - Server took too long to respond');
+      console.error('API URL:', error.config?.url);
+    } else {
+      console.error('API Error:', error.response?.data || error.message);
+      console.error('Status:', error.response?.status);
+    }
     return Promise.reject(error);
   }
 );
 
+// Employee API
+export const employeeAPI = {
+  // Get all employees
+  getAll: async (date = null) => {
+    const params = date ? { date } : {};
+    const response = await api.get(buildUrl('/employees'), { params });
+    return response.data;
+  },
+
+  // Get employee by ID
+  getById: async (id) => {
+    const response = await api.get(buildUrl(`/employees/${id}`));
+    return response.data;
+  },
+
+  // Create employee
+  create: async (name, employeeCode = null) => {
+    const response = await api.post(buildUrl('/employees'), {
+      name,
+      employee_code: employeeCode,
+    });
+    return response.data;
+  },
+
+  // Update employee
+  update: async (id, name, employeeCode = null, isActive = true) => {
+    const response = await api.put(buildUrl(`/employees/${id}`), {
+      name,
+      employee_code: employeeCode,
+      is_active: isActive,
+    });
+    return response.data;
+  },
+
+  // Delete employee
+  delete: async (id) => {
+    const response = await api.delete(buildUrl(`/employees/${id}`));
+    return response.data;
+  },
+};
+
 // Voucher API
 export const voucherAPI = {
   // Generate vouchers
-  generate: async (quantity, issueDate) => {
+  generate: async (employeeIds, issueDate) => {
     const response = await api.post(buildUrl('/vouchers/generate'), {
-      quantity,
+      employee_ids: employeeIds,
       issue_date: issueDate,
     });
     return response.data;

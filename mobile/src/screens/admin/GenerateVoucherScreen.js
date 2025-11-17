@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { TextInput, Card, ActivityIndicator } from 'react-native-paper';
+import { Card, ActivityIndicator, Checkbox } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { voucherAPI, printAPI } from '../../services/api';
+import { voucherAPI, printAPI, employeeAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatCurrency, formatDate, getTodayDate } from '../../utils/formatters';
 import { PRINTER_IP, PRINTER_PORT } from '../../config/api';
@@ -21,16 +21,63 @@ import { isTablet, getFontSize } from '../../utils/device';
 
 export default function GenerateVoucherScreen() {
   const navigation = useNavigation();
-  const [quantity, setQuantity] = useState('45');
+  const [employees, setEmployees] = useState([]);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
   const [issueDate, setIssueDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const [loadingEmployees, setLoadingEmployees] = useState(true);
+
+  useEffect(() => {
+    loadEmployees();
+  }, [issueDate]);
+
+  const loadEmployees = async () => {
+    try {
+      setLoadingEmployees(true);
+      const date = formatDateForAPI(issueDate);
+      const response = await employeeAPI.getAll(date);
+      if (response.success) {
+        setEmployees(response.data);
+        // Auto-select employees without voucher today
+        const withoutVoucher = response.data
+          .filter(emp => !emp.has_voucher_today)
+          .map(emp => emp.id);
+        setSelectedEmployeeIds(withoutVoucher);
+      }
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      Alert.alert('Error', 'Gagal memuat data karyawan');
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
       setIssueDate(selectedDate);
+    }
+  };
+
+  const toggleEmployee = (employeeId) => {
+    if (selectedEmployeeIds.includes(employeeId)) {
+      setSelectedEmployeeIds(selectedEmployeeIds.filter(id => id !== employeeId));
+    } else {
+      setSelectedEmployeeIds([...selectedEmployeeIds, employeeId]);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    const withoutVoucher = employees
+      .filter(emp => !emp.has_voucher_today && emp.is_active)
+      .map(emp => emp.id);
+    
+    if (selectedEmployeeIds.length === withoutVoucher.length) {
+      setSelectedEmployeeIds([]);
+    } else {
+      setSelectedEmployeeIds(withoutVoucher);
     }
   };
 
@@ -42,10 +89,13 @@ export default function GenerateVoucherScreen() {
   };
 
   const handleGenerate = async () => {
-    const qty = parseInt(quantity);
-    
-    if (!qty || qty < 1 || qty > 100) {
-      Alert.alert('Error', 'Jumlah voucher harus antara 1-100');
+    if (selectedEmployeeIds.length === 0) {
+      Alert.alert('Error', 'Pilih minimal 1 karyawan');
+      return;
+    }
+
+    if (selectedEmployeeIds.length > 100) {
+      Alert.alert('Error', 'Maksimal 100 karyawan per batch');
       return;
     }
 
@@ -53,22 +103,40 @@ export default function GenerateVoucherScreen() {
       setLoading(true);
       
       // Generate vouchers
-      const generateResponse = await voucherAPI.generate(qty, formatDateForAPI(issueDate));
+      const generateResponse = await voucherAPI.generate(selectedEmployeeIds, formatDateForAPI(issueDate));
       
       if (!generateResponse.success) {
         throw new Error(generateResponse.message || 'Gagal generate voucher');
       }
 
       const vouchers = generateResponse.data.vouchers;
+      const count = vouchers.length;
+      const skipped = generateResponse.data.skipped || 0;
+
+      if (count === 0) {
+        Alert.alert(
+          'Info',
+          'Semua karyawan yang dipilih sudah memiliki voucher hari ini',
+          [{ text: 'OK' }]
+        );
+        setLoading(false);
+        loadEmployees(); // Refresh list
+        return;
+      }
 
       // Print vouchers
       setPrinting(true);
       try {
         await printAPI.thermal(vouchers, PRINTER_IP, PRINTER_PORT);
         
+        let message = `${count} voucher berhasil dicetak!`;
+        if (skipped > 0) {
+          message += `\n(${skipped} karyawan sudah punya voucher hari ini)`;
+        }
+        
         Alert.alert(
           'Berhasil!',
-          `${qty} voucher berhasil dicetak!`,
+          message,
           [
             {
               text: 'OK',
@@ -82,13 +150,20 @@ export default function GenerateVoucherScreen() {
         );
       } catch (printError) {
         console.error('Print error:', printError);
+        let message = `${count} voucher berhasil dibuat`;
+        if (skipped > 0) {
+          message += `\n(${skipped} karyawan sudah punya voucher hari ini)`;
+        }
+        message += ', tetapi gagal mencetak. Silakan coba print manual.';
+        
         Alert.alert(
           'Voucher Generated',
-          `${qty} voucher berhasil dibuat, tetapi gagal mencetak. Silakan coba print manual.`,
+          message,
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       } finally {
         setPrinting(false);
+        loadEmployees(); // Refresh list
       }
     } catch (error) {
       console.error('Generate error:', error);
@@ -98,8 +173,11 @@ export default function GenerateVoucherScreen() {
     }
   };
 
-  const qty = parseInt(quantity) || 0;
-  const totalNominal = qty * 10000;
+  const count = selectedEmployeeIds.length;
+  const totalNominal = count * 10000;
+  const employeesWithoutVoucher = employees.filter(emp => !emp.has_voucher_today && emp.is_active);
+  const allSelected = employeesWithoutVoucher.length > 0 && 
+    selectedEmployeeIds.length === employeesWithoutVoucher.length;
 
   return (
     <KeyboardAvoidingView
@@ -108,20 +186,97 @@ export default function GenerateVoucherScreen() {
     >
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          {/* Input Section */}
+          {/* Employee Selection Section */}
           <Card style={styles.card}>
             <Card.Content>
-              <Text style={[styles.label, { fontSize: getFontSize(16) }]}>
-                Jumlah Karyawan
-              </Text>
-              <TextInput
-                mode="outlined"
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="numeric"
-                style={[styles.input, { height: isTablet() ? 56 : 48 }]}
-                contentStyle={{ fontSize: getFontSize(18) }}
-              />
+              <View style={styles.headerRow}>
+                <Text style={[styles.label, { fontSize: getFontSize(16) }]}>
+                  Pilih Karyawan
+                </Text>
+                {employeesWithoutVoucher.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.selectAllButton}
+                    onPress={toggleSelectAll}
+                  >
+                    <Text style={[styles.selectAllText, { fontSize: getFontSize(14) }]}>
+                      {allSelected ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {loadingEmployees ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                  <Text style={[styles.loadingText, { fontSize: getFontSize(14) }]}>
+                    Memuat data karyawan...
+                  </Text>
+                </View>
+              ) : employees.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <MaterialCommunityIcons
+                    name="account-off"
+                    size={isTablet() ? 48 : 40}
+                    color={theme.colors.textSecondary}
+                  />
+                  <Text style={[styles.emptyText, { fontSize: getFontSize(14) }]}>
+                    Belum ada data karyawan
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.addEmployeeButton}
+                    onPress={() => navigation.navigate('Employee')}
+                  >
+                    <Text style={[styles.addEmployeeText, { fontSize: getFontSize(14) }]}>
+                      Tambah Karyawan
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <ScrollView
+                  style={styles.employeeList}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator={false}
+                >
+                  {employees.map((employee) => {
+                    const isSelected = selectedEmployeeIds.includes(employee.id);
+                    const hasVoucher = employee.has_voucher_today;
+                    const isDisabled = hasVoucher || !employee.is_active;
+
+                    return (
+                      <TouchableOpacity
+                        key={employee.id}
+                        style={[
+                          styles.employeeItem,
+                          isSelected && styles.employeeItemSelected,
+                          isDisabled && styles.employeeItemDisabled,
+                        ]}
+                        onPress={() => !isDisabled && toggleEmployee(employee.id)}
+                        disabled={isDisabled}
+                      >
+                        <Checkbox
+                          status={isSelected ? 'checked' : 'unchecked'}
+                          onPress={() => !isDisabled && toggleEmployee(employee.id)}
+                          disabled={isDisabled}
+                          color={theme.colors.primary}
+                        />
+                        <View style={styles.employeeItemInfo}>
+                          <Text style={[styles.employeeItemName, { fontSize: getFontSize(15) }]}>
+                            {employee.name}
+                          </Text>
+                          {hasVoucher && (
+                            <View style={styles.voucherBadge}>
+                              <MaterialCommunityIcons name="ticket" size={12} color={theme.colors.success} />
+                              <Text style={[styles.voucherBadgeText, { fontSize: getFontSize(11) }]}>
+                                Sudah punya voucher hari ini
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
 
               <Text style={[styles.label, { fontSize: getFontSize(16), marginTop: theme.spacing.md }]}>
                 Tanggal Voucher
@@ -161,21 +316,33 @@ export default function GenerateVoucherScreen() {
               
               <View style={styles.previewRow}>
                 <Text style={[styles.previewLabel, { fontSize: getFontSize(14) }]}>
-                  Total Voucher:
+                  Total Karyawan:
                 </Text>
                 <Text style={[styles.previewValue, { fontSize: getFontSize(16) }]}>
-                  {qty} voucher
+                  {count} karyawan
                 </Text>
               </View>
 
-              <View style={styles.previewRow}>
-                <Text style={[styles.previewLabel, { fontSize: getFontSize(14) }]}>
-                  Nomor Urut:
-                </Text>
-                <Text style={[styles.previewValue, { fontSize: getFontSize(16) }]}>
-                  001 - {String(qty).padStart(3, '0')}
-                </Text>
-              </View>
+              {count > 0 && (
+                <View style={styles.selectedList}>
+                  <Text style={[styles.previewLabel, { fontSize: getFontSize(14), marginBottom: theme.spacing.xs }]}>
+                    Karyawan Terpilih:
+                  </Text>
+                  {selectedEmployeeIds.slice(0, 5).map((id) => {
+                    const employee = employees.find(emp => emp.id === id);
+                    return employee ? (
+                      <Text key={id} style={[styles.selectedName, { fontSize: getFontSize(13) }]}>
+                        • {employee.name}
+                      </Text>
+                    ) : null;
+                  })}
+                  {count > 5 && (
+                    <Text style={[styles.selectedName, { fontSize: getFontSize(13), fontStyle: 'italic' }]}>
+                      ... dan {count - 5} karyawan lainnya
+                    </Text>
+                  )}
+                </View>
+              )}
 
               <View style={styles.previewRow}>
                 <Text style={[styles.previewLabel, { fontSize: getFontSize(14) }]}>
@@ -252,6 +419,99 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: theme.colors.surface,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  selectAllButton: {
+    padding: theme.spacing.xs,
+  },
+  selectAllText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  loadingText: {
+    color: theme.colors.textSecondary,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  emptyText: {
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  addEmployeeButton: {
+    marginTop: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
+  },
+  addEmployeeText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  employeeList: {
+    maxHeight: isTablet() ? 400 : 300,
+    marginTop: theme.spacing.sm,
+  },
+  employeeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  employeeItemSelected: {
+    backgroundColor: theme.colors.primary + '20',
+    borderColor: theme.colors.primary,
+  },
+  employeeItemDisabled: {
+    opacity: 0.5,
+  },
+  employeeItemInfo: {
+    flex: 1,
+    marginLeft: theme.spacing.sm,
+  },
+  employeeItemName: {
+    color: theme.colors.text,
+    fontWeight: '500',
+  },
+  voucherBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.xs,
+    gap: theme.spacing.xs,
+  },
+  voucherBadgeText: {
+    color: theme.colors.success,
+    fontWeight: '600',
+  },
+  selectedList: {
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.sm,
+    maxHeight: 200,
+  },
+  selectedName: {
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
   dateButton: {
     flexDirection: 'row',

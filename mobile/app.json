@@ -4,11 +4,8 @@
     "slug": "voucher-rakan-kuphi",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
       "backgroundColor": "#2563EB"
     },
     "assetBundlePatterns": [
@@ -20,7 +17,6 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2563EB"
       },
       "package": "com.rakan.kuphi.voucher",
@@ -29,11 +25,10 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
-        "expo-barcode-scanner",
+        "expo-camera",
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access camera for scanning vouchers."
         }

@@ -31,12 +31,19 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       vouchers: {
-        generate: 'POST /api/vouchers/generate',
-        check: 'GET /api/vouchers/check/:barcode',
+        generate: 'POST /api/vouchers/generate (body: {employee_ids: number[], issue_date: string})',
+        check: 'GET /api/vouchers/check/:barcode (supports barcode or voucher_code)',
         redeem: 'PUT /api/vouchers/redeem/:barcode',
         report: 'GET /api/vouchers/report/daily?date=YYYY-MM-DD',
         print: 'GET /api/vouchers/print?date=YYYY-MM-DD',
         details: 'GET /api/vouchers/details?date=YYYY-MM-DD'
+      },
+      employees: {
+        getAll: 'GET /api/employees?date=YYYY-MM-DD (optional: get with voucher status)',
+        getById: 'GET /api/employees/:id',
+        create: 'POST /api/employees (body: {name: string, employee_code?: string})',
+        update: 'PUT /api/employees/:id',
+        delete: 'DELETE /api/employees/:id'
       },
       print: {
         thermal: 'POST /api/print/thermal'
@@ -52,6 +59,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/vouchers', voucherRoutes);
+app.use('/api/employees', require('./routes/employeeRoutes'));
 app.use('/api/print', require('./routes/printRoutes'));
 
 // Error handling middleware

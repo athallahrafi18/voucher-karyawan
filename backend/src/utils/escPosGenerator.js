@@ -73,6 +73,25 @@ class EscPosGenerator {
 
     // Voucher details
     commands += this.align('left');
+    
+    // Employee name (if available)
+    if (voucher.employee_name) {
+      commands += this.bold(true);
+      commands += 'Nama: ' + voucher.employee_name + this.LF;
+      commands += this.bold(false);
+      commands += this.LF;
+    }
+    
+    // Voucher code (random code like Grab)
+    if (voucher.voucher_code) {
+      commands += this.textSize(2, 2);
+      commands += this.bold(true);
+      commands += 'Kode: ' + voucher.voucher_code + this.LF;
+      commands += this.textSize(1, 1);
+      commands += this.bold(false);
+      commands += this.LF;
+    }
+    
     commands += 'No Voucher: ' + voucher.voucher_number + this.LF;
     
     // Format date: DD/MM/YYYY
@@ -86,7 +105,7 @@ class EscPosGenerator {
 
     // Barcode (center)
     commands += this.align('center');
-    commands += '[BARCODE: ' + voucher.barcode + ']' + this.LF;
+    commands += '[BARCODE: ' + (voucher.voucher_code || voucher.barcode) + ']' + this.LF;
     commands += this.LF;
 
     // Footer line

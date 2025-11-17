@@ -39,6 +39,8 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.error('Error fetching report:', error);
+      // Error handling sudah di interceptor, tidak perlu Alert di sini
+      // User akan melihat loading state yang hilang jika error
     } finally {
       setLoading(false);
     }

@@ -1,16 +1,51 @@
 const pool = require('../config/database');
 
 class VoucherModel {
-  // Generate barcode: RK + YYYYMMDD + nomor urut 3 digit
+  // Generate random voucher code (like Grab: 8 characters alphanumeric)
+  static generateVoucherCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing chars (0, O, I, 1)
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  // Generate barcode: RK + YYYYMMDD + nomor urut 3 digit (for backward compatibility)
   static generateBarcode(issueDate, sequence) {
     const dateStr = issueDate.replace(/-/g, '');
     const seqStr = String(sequence).padStart(3, '0');
     return `RK${dateStr}${seqStr}`;
   }
 
-  // Generate multiple vouchers
-  static async generateVouchers(quantity, issueDate) {
+  // Ensure unique voucher code
+  static async generateUniqueVoucherCode() {
+    let code;
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (!isUnique && attempts < maxAttempts) {
+      code = this.generateVoucherCode();
+      const result = await pool.query(
+        'SELECT COUNT(*) as count FROM vouchers WHERE voucher_code = $1',
+        [code]
+      );
+      isUnique = parseInt(result.rows[0].count) === 0;
+      attempts++;
+    }
+
+    if (!isUnique) {
+      throw new Error('Gagal generate unique voucher code');
+    }
+
+    return code;
+  }
+
+  // Generate vouchers for list of employee IDs
+  static async generateVouchers(employeeIds, issueDate) {
     const client = await pool.connect();
+    const EmployeeModel = require('./employeeModel');
     
     try {
       await client.query('BEGIN');
@@ -18,16 +53,40 @@ class VoucherModel {
       const vouchers = [];
       const validUntil = issueDate; // Voucher hanya berlaku 1 hari
       
-      for (let i = 1; i <= quantity; i++) {
-        const voucherNumber = String(i).padStart(3, '0');
-        const barcode = this.generateBarcode(issueDate, i);
+      // Get the next sequence number for this date
+      const sequenceResult = await client.query(
+        `SELECT COUNT(*) as count FROM vouchers WHERE issue_date = $1`,
+        [issueDate]
+      );
+      const startSequence = parseInt(sequenceResult.rows[0].count) + 1;
+      
+      for (let i = 0; i < employeeIds.length; i++) {
+        const employeeId = employeeIds[i];
+        
+        // Get employee data
+        const employee = await EmployeeModel.findById(employeeId);
+        if (!employee || !employee.is_active) {
+          continue; // Skip invalid or inactive employees
+        }
+
+        // Check if employee already has voucher for today
+        const hasVoucher = await EmployeeModel.hasVoucherToday(employeeId, issueDate);
+        if (hasVoucher) {
+          continue; // Skip if already has voucher today
+        }
+        
+        // Generate unique voucher code
+        const voucherCode = await this.generateUniqueVoucherCode();
+        const sequence = startSequence + i;
+        const voucherNumber = String(sequence).padStart(3, '0');
+        const barcode = this.generateBarcode(issueDate, sequence);
         
         const result = await client.query(
           `INSERT INTO vouchers 
-           (barcode, voucher_number, nominal, company_name, issue_date, valid_until, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           (voucher_code, barcode, voucher_number, nominal, company_name, issue_date, valid_until, status, employee_id, employee_name)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            RETURNING *`,
-          [barcode, voucherNumber, 10000, 'Rakan Kuphi', issueDate, validUntil, 'active']
+          [voucherCode, barcode, voucherNumber, 10000, 'Rakan Kuphi', issueDate, validUntil, 'active', employeeId, employee.name]
         );
         
         vouchers.push(result.rows[0]);
@@ -43,10 +102,13 @@ class VoucherModel {
     }
   }
 
-  // Check voucher by barcode
+  // Check voucher by barcode or voucher_code
   static async findByBarcode(barcode) {
     const result = await pool.query(
-      'SELECT * FROM vouchers WHERE barcode = $1',
+      `SELECT v.*, e.name as employee_name_full, e.employee_code
+       FROM vouchers v
+       LEFT JOIN employees e ON v.employee_id = e.id
+       WHERE v.barcode = $1 OR v.voucher_code = $1`,
       [barcode]
     );
     

@@ -8,6 +8,7 @@ import { isTablet } from '../utils/device';
 import HomeScreen from '../screens/admin/HomeScreen';
 import GenerateVoucherScreen from '../screens/admin/GenerateVoucherScreen';
 import ReportScreen from '../screens/admin/ReportScreen';
+import EmployeeScreen from '../screens/admin/EmployeeScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
@@ -48,6 +49,16 @@ function AdminTabs() {
           tabBarLabel: 'Laporan',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="chart-bar" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Employee"
+        component={EmployeeScreen}
+        options={{
+          tabBarLabel: 'Karyawan',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="account-group" size={size} color={color} />
           ),
         }}
       />
