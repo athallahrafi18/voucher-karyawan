@@ -8,10 +8,13 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  // Connection pool settings
+  // Connection pool settings - increased timeout for Railway
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 30000, // Increased to 30 seconds for Railway
+  // Additional settings for Railway
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
 });
 
 // Test connection
@@ -24,18 +27,34 @@ pool.on('error', (err) => {
   // Don't exit process, let the app continue (might be temporary connection issue)
 });
 
-// Test connection on startup
+// Test connection on startup (with retry)
 (async () => {
-  try {
-    if (process.env.DATABASE_URL) {
+  if (!process.env.DATABASE_URL) {
+    return;
+  }
+
+  const maxRetries = 3;
+  const retryDelay = 5000; // 5 seconds
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 Attempting database connection (${attempt}/${maxRetries})...`);
       const client = await pool.connect();
       await client.query('SELECT NOW()');
       client.release();
       console.log('✅ Database connection test successful');
+      return; // Success, exit function
+    } catch (error) {
+      console.error(`❌ Database connection test failed (attempt ${attempt}/${maxRetries}):`, error.message);
+      
+      if (attempt < maxRetries) {
+        console.log(`⏳ Retrying in ${retryDelay/1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      } else {
+        console.warn('⚠️  Server will continue but database features may not work');
+        console.warn('⚠️  Please check DATABASE_URL and ensure database service is running');
+      }
     }
-  } catch (error) {
-    console.error('❌ Database connection test failed:', error.message);
-    console.warn('⚠️  Server will continue but database features may not work');
   }
 })();
 
