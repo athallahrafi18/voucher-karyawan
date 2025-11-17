@@ -5,7 +5,20 @@ const voucherRoutes = require('./routes/voucherRoutes');
 const app = express();
 
 // Middleware
-app.use(cors()); // Enable CORS for all origins (React Native)
+// CORS configuration for React Native
+app.use(cors({
+  origin: '*', // Allow all origins (React Native apps)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+}));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
