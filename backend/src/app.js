@@ -9,6 +9,29 @@ app.use(cors()); // Enable CORS for all origins (React Native)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root route - API info
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Voucher Karyawan API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      vouchers: {
+        generate: 'POST /api/vouchers/generate',
+        check: 'GET /api/vouchers/check/:barcode',
+        redeem: 'PUT /api/vouchers/redeem/:barcode',
+        report: 'GET /api/vouchers/report/daily?date=YYYY-MM-DD',
+        print: 'GET /api/vouchers/print?date=YYYY-MM-DD',
+        details: 'GET /api/vouchers/details?date=YYYY-MM-DD'
+      },
+      print: {
+        thermal: 'POST /api/print/thermal'
+      }
+    }
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Voucher API is running' });
