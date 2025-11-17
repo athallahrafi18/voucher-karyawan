@@ -1,0 +1,114 @@
+# ============================================
+# Backend (Node.js)
+# ============================================
+backend/node_modules/
+backend/.env
+backend/.env.local
+backend/.env.*.local
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/*.log
+backend/dist/
+backend/build/
+backend/.DS_Store
+
+# ============================================
+# Mobile (React Native / Expo)
+# ============================================
+mobile/node_modules/
+mobile/.expo/
+mobile/.expo-shared/
+mobile/dist/
+mobile/npm-debug.*
+mobile/yarn-debug.*
+mobile/yarn-error.*
+mobile/*.log
+mobile/.DS_Store
+
+# Expo (already covered above, keeping for clarity)
+
+# Android
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/.idea/
+mobile/android/local.properties
+mobile/android/*.iml
+mobile/android/.cxx/
+mobile/android/.externalNativeBuild/
+mobile/android/app/release/
+
+# iOS
+mobile/ios/build/
+mobile/ios/Pods/
+mobile/ios/*.xcworkspace
+mobile/ios/*.xcuserdata
+mobile/ios/.xcode.env.local
+
+# ============================================
+# General
+# ============================================
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+tmp/
+temp/
+
+# Build outputs
+build/
+dist/
+out/
+.next/
+
+# Package manager locks (keep these for consistency)
+# package-lock.json  # Keep this
+# yarn.lock  # Keep this
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Misc
+*.pem
+*.key
+*.cert
+*.crt
+

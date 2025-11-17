@@ -1,0 +1,77 @@
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ROLES } from '../config/roles';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [userRole, setUserRole] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check stored role on mount
+  useEffect(() => {
+    checkStoredRole();
+  }, []);
+
+  const checkStoredRole = async () => {
+    try {
+      const storedRole = await AsyncStorage.getItem('userRole');
+      if (storedRole && Object.values(ROLES).includes(storedRole)) {
+        setUserRole(storedRole);
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error('Error checking stored role:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (role) => {
+    try {
+      if (!Object.values(ROLES).includes(role)) {
+        throw new Error('Invalid role');
+      }
+      setUserRole(role);
+      setIsAuthenticated(true);
+      await AsyncStorage.setItem('userRole', role);
+    } catch (error) {
+      console.error('Error logging in:', error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      setUserRole(null);
+      setIsAuthenticated(false);
+      await AsyncStorage.removeItem('userRole');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        userRole,
+        isAuthenticated,
+        isLoading,
+        login,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
+
