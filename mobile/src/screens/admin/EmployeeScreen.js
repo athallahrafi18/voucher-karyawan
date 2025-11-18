@@ -17,6 +17,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { employeeAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { isTablet, getFontSize } from '../../utils/device';
+import Navbar from '../../components/Navbar';
 
 export default function EmployeeScreen() {
   const [employees, setEmployees] = useState([]);
@@ -154,6 +155,12 @@ export default function EmployeeScreen() {
 
   return (
     <View style={styles.container}>
+      <Navbar
+        title="Karyawan"
+        subtitle="Master Data Karyawan"
+        icon="account-group"
+        backgroundColor={theme.colors.primary}
+      />
       <FlatList
         data={employees}
         renderItem={renderEmployee}

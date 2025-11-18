@@ -17,6 +17,7 @@ import { theme } from '../../config/theme';
 import { formatDate, getTodayDate } from '../../utils/formatters';
 import { isTablet, getFontSize, getSpacing } from '../../utils/device';
 import StatsCard from '../../components/StatsCard';
+import Navbar from '../../components/Navbar';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -61,13 +62,20 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <View style={styles.content}>
+    <View style={styles.container}>
+      <Navbar
+        title="Dashboard"
+        subtitle="Voucher Rakan Kuphi"
+        icon="view-dashboard"
+        backgroundColor={theme.colors.primary}
+      />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Header Card */}
         <Card style={styles.headerCard}>
           <Card.Content style={styles.headerContent}>
@@ -154,8 +162,8 @@ export default function HomeScreen() {
             color={theme.colors.primary}
           />
         </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -163,6 +171,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   content: {
     padding: theme.spacing.md,

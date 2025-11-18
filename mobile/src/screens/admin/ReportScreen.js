@@ -16,6 +16,7 @@ import { theme } from '../../config/theme';
 import { formatDate, formatDateTime, getTodayDate } from '../../utils/formatters';
 import { isTablet, getFontSize } from '../../utils/device';
 import VoucherCard from '../../components/VoucherCard';
+import Navbar from '../../components/Navbar';
 
 export default function ReportScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -85,6 +86,12 @@ export default function ReportScreen() {
 
   return (
     <View style={styles.container}>
+      <Navbar
+        title="Laporan"
+        subtitle="Data Voucher Harian"
+        icon="chart-bar"
+        backgroundColor={theme.colors.primary}
+      />
       <ScrollView
         style={styles.scrollView}
         refreshControl={

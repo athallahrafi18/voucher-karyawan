@@ -16,7 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { voucherAPI, printAPI, employeeAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatCurrency, formatDate, getTodayDate } from '../../utils/formatters';
-import { PRINTER_IP, PRINTER_PORT } from '../../config/api';
+import { getPrinterSettings } from '../../utils/storage';
 import { isTablet, getFontSize } from '../../utils/device';
 
 export default function GenerateVoucherScreen() {
@@ -28,10 +28,19 @@ export default function GenerateVoucherScreen() {
   const [loading, setLoading] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [loadingEmployees, setLoadingEmployees] = useState(true);
+  const [printerIp, setPrinterIp] = useState('192.168.110.10');
+  const [printerPort, setPrinterPort] = useState(9100);
 
   useEffect(() => {
     loadEmployees();
+    loadPrinterSettings();
   }, [issueDate]);
+
+  const loadPrinterSettings = async () => {
+    const settings = await getPrinterSettings();
+    setPrinterIp(settings.printer_ip);
+    setPrinterPort(settings.printer_port);
+  };
 
   const loadEmployees = async () => {
     try {
@@ -127,7 +136,7 @@ export default function GenerateVoucherScreen() {
       // Print vouchers
       setPrinting(true);
       try {
-        await printAPI.thermal(vouchers, PRINTER_IP, PRINTER_PORT);
+        await printAPI.thermal(vouchers, printerIp, printerPort);
         
         let message = `${count} voucher berhasil dicetak!`;
         if (skipped > 0) {

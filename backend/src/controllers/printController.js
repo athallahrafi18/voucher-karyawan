@@ -23,19 +23,34 @@ class PrintController {
         });
       }
 
-      // Generate ESC/POS commands
-      const printData = EscPosGenerator.generateMultipleVouchers(vouchers);
-
-      // Send to printer via TCP socket
-      const printedCount = await this.sendToPrinter(
-        printer_ip,
-        parseInt(printer_port),
-        printData
-      );
+      // Print vouchers one by one to ensure each voucher is separated
+      // This ensures each voucher is printed on separate paper with cut
+      let printedCount = 0;
+      
+      for (let i = 0; i < vouchers.length; i++) {
+        const voucher = vouchers[i];
+        
+        // Generate ESC/POS commands for single voucher
+        const printData = EscPosGenerator.generateVoucherReceipt(voucher);
+        
+        // Send to printer via TCP socket
+        await PrintController.sendToPrinter(
+          printer_ip,
+          parseInt(printer_port),
+          printData
+        );
+        
+        printedCount++;
+        
+        // Small delay between prints to ensure printer processes each voucher
+        if (i < vouchers.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+        }
+      }
 
       res.json({
         success: true,
-        message: 'Print job sent to printer',
+        message: `${printedCount} voucher(s) printed successfully (each on separate paper)`,
         printed_count: printedCount
       });
     } catch (error) {

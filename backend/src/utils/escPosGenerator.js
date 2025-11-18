@@ -113,25 +113,33 @@ class EscPosGenerator {
     commands += this.LF;
     commands += this.LF;
     commands += this.LF;
+    
+    // Feed paper before cut (to ensure proper position)
+    commands += this.LF;
+    commands += this.LF;
+    commands += this.LF;
 
-    // Cut paper (if supported)
-    commands += this.GS + 'V' + '\x42' + '\x00'; // Partial cut
+    // Full cut paper (to separate each voucher)
+    // GS V 0 = Full cut immediately
+    // GS V 1 = Partial cut immediately
+    // GS V 65 n = Feed n dots (0-255) then full cut
+    // For ULT-80AT III with cutter, use full cut
+    commands += this.GS + 'V' + '\x00'; // Full cut immediately
 
     return Buffer.from(commands, 'utf8');
   }
 
-  // Generate multiple vouchers
+  // Generate multiple vouchers - each voucher will be printed separately with cut
   static generateMultipleVouchers(vouchers) {
     let allCommands = Buffer.alloc(0);
 
     vouchers.forEach((voucher, index) => {
+      // Each voucher is already complete with cut command
       const voucherCommands = this.generateVoucherReceipt(voucher);
       allCommands = Buffer.concat([allCommands, voucherCommands]);
       
-      // Add separator between vouchers (except last one)
-      if (index < vouchers.length - 1) {
-        allCommands = Buffer.concat([allCommands, Buffer.from(this.LF + this.LF, 'utf8')]);
-      }
+      // No need for separator - each voucher already has cut command
+      // The cut command will automatically separate each voucher
     });
 
     return allCommands;

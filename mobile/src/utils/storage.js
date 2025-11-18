@@ -93,3 +93,41 @@ export const getSettings = async () => {
   }
 };
 
+/**
+ * Save printer settings
+ */
+export const savePrinterSettings = async (printerIp, printerPort) => {
+  try {
+    const settings = {
+      printer_ip: printerIp,
+      printer_port: printerPort,
+    };
+    await AsyncStorage.setItem('printer_settings', JSON.stringify(settings));
+  } catch (error) {
+    console.error('Error saving printer settings:', error);
+  }
+};
+
+/**
+ * Get printer settings
+ */
+export const getPrinterSettings = async () => {
+  try {
+    const data = await AsyncStorage.getItem('printer_settings');
+    if (data) {
+      return JSON.parse(data);
+    }
+    // Return default if not set
+    return {
+      printer_ip: '192.168.110.10',
+      printer_port: 9100,
+    };
+  } catch (error) {
+    console.error('Error getting printer settings:', error);
+    return {
+      printer_ip: '192.168.110.10',
+      printer_port: 9100,
+    };
+  }
+};
+

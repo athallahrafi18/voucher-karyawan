@@ -14,6 +14,7 @@ import { theme } from '../../config/theme';
 import { formatDateTime } from '../../utils/formatters';
 import { isTablet, getFontSize } from '../../utils/device';
 import StatusBadge from '../../components/StatusBadge';
+import Navbar from '../../components/Navbar';
 
 const FILTERS = ['All', 'Valid', 'Invalid'];
 
@@ -87,6 +88,12 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
+      <Navbar
+        title="Riwayat Scan"
+        subtitle="History Voucher"
+        icon="history"
+        backgroundColor={theme.colors.secondary}
+      />
       {/* Filter Buttons */}
       <View style={styles.filterContainer}>
         {FILTERS.map((filterOption) => (
