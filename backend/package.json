@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "migrate": "node src/database/migrate.js"
+    "migrate": "node src/database/migrate.js",
+    "clear": "node src/database/clearData.js"
   },
   "keywords": ["voucher", "api", "express"],
   "author": "",

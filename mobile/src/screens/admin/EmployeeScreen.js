@@ -8,8 +8,11 @@ import {
   Alert,
   FlatList,
   RefreshControl,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { Card, ActivityIndicator, FAB } from 'react-native-paper';
+import { Card, ActivityIndicator, FAB, TextInput, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { employeeAPI } from '../../services/api';
 import { theme } from '../../config/theme';
@@ -19,6 +22,10 @@ export default function EmployeeScreen() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [employeeName, setEmployeeName] = useState('');
+  const [employeeCode, setEmployeeCode] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadEmployees();
@@ -46,36 +53,36 @@ export default function EmployeeScreen() {
   };
 
   const handleAdd = () => {
-    Alert.prompt(
-      'Tambah Karyawan',
-      'Masukkan nama karyawan',
-      [
-        {
-          text: 'Batal',
-          style: 'cancel',
-        },
-        {
-          text: 'Simpan',
-          onPress: async (name) => {
-            if (!name || !name.trim()) {
-              Alert.alert('Error', 'Nama karyawan harus diisi');
-              return;
-            }
-            try {
-              const response = await employeeAPI.create(name.trim());
-              if (response.success) {
-                Alert.alert('Berhasil', 'Karyawan berhasil ditambahkan');
-                loadEmployees();
-              }
-            } catch (error) {
-              console.error('Error adding employee:', error);
-              Alert.alert('Error', error.response?.data?.message || 'Gagal menambahkan karyawan');
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
+    setEmployeeName('');
+    setEmployeeCode('');
+    setShowAddModal(true);
+  };
+
+  const handleSaveEmployee = async () => {
+    if (!employeeName || !employeeName.trim()) {
+      Alert.alert('Error', 'Nama karyawan harus diisi');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const response = await employeeAPI.create(
+        employeeName.trim(),
+        employeeCode.trim() || null
+      );
+      if (response.success) {
+        Alert.alert('Berhasil', 'Karyawan berhasil ditambahkan');
+        setShowAddModal(false);
+        setEmployeeName('');
+        setEmployeeCode('');
+        loadEmployees();
+      }
+    } catch (error) {
+      console.error('Error adding employee:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Gagal menambahkan karyawan');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = (employee) => {
@@ -177,6 +184,81 @@ export default function EmployeeScreen() {
         onPress={handleAdd}
         label={isTablet() ? 'Tambah' : undefined}
       />
+
+      {/* Add Employee Modal */}
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { fontSize: getFontSize(20) }]}>
+                Tambah Karyawan
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowAddModal(false)}
+                style={styles.closeButton}
+              >
+                <MaterialCommunityIcons name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <Text style={[styles.inputLabel, { fontSize: getFontSize(16) }]}>
+                Nama Karyawan *
+              </Text>
+              <TextInput
+                mode="outlined"
+                value={employeeName}
+                onChangeText={setEmployeeName}
+                placeholder="Masukkan nama karyawan"
+                style={[styles.input, { height: isTablet() ? 56 : 48 }]}
+                contentStyle={{ fontSize: getFontSize(16) }}
+                autoFocus
+              />
+
+              <Text style={[styles.inputLabel, { fontSize: getFontSize(16), marginTop: theme.spacing.md }]}>
+                Kode Karyawan (Opsional)
+              </Text>
+              <TextInput
+                mode="outlined"
+                value={employeeCode}
+                onChangeText={setEmployeeCode}
+                placeholder="Masukkan kode karyawan (opsional)"
+                style={[styles.input, { height: isTablet() ? 56 : 48 }]}
+                contentStyle={{ fontSize: getFontSize(16) }}
+              />
+
+              <View style={styles.modalActions}>
+                <Button
+                  mode="outlined"
+                  onPress={() => setShowAddModal(false)}
+                  style={[styles.modalButton, styles.cancelButton]}
+                  labelStyle={{ fontSize: getFontSize(16) }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={handleSaveEmployee}
+                  loading={saving}
+                  disabled={saving || !employeeName.trim()}
+                  style={[styles.modalButton, styles.saveButton]}
+                  labelStyle={{ fontSize: getFontSize(16) }}
+                >
+                  Simpan
+                </Button>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -254,6 +336,59 @@ const styles = StyleSheet.create({
     margin: theme.spacing.md,
     right: 0,
     bottom: 0,
+    backgroundColor: theme.colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.borderRadius.lg,
+    borderTopRightRadius: theme.borderRadius.lg,
+    maxHeight: '80%',
+    paddingBottom: Platform.OS === 'ios' ? 40 : theme.spacing.md,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.background,
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  closeButton: {
+    padding: theme.spacing.xs,
+  },
+  modalBody: {
+    padding: theme.spacing.lg,
+  },
+  inputLabel: {
+    color: theme.colors.text,
+    fontWeight: '600',
+    marginBottom: theme.spacing.sm,
+  },
+  input: {
+    backgroundColor: theme.colors.surface,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.xl,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.xs,
+  },
+  cancelButton: {
+    borderColor: theme.colors.textSecondary,
+  },
+  saveButton: {
     backgroundColor: theme.colors.primary,
   },
 });
