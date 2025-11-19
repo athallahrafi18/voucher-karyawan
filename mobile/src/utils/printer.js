@@ -80,16 +80,36 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
     // Use TCP socket if available (development build)
     if (isTcpSocketAvailable && TcpSocket && typeof TcpSocket === 'function') {
       try {
-        console.log(`🖨️ Attempting to connect to printer ${printerIp}:${printerPort}`);
+        // Validate and format parameters
+        const port = parseInt(printerPort, 10);
+        const host = String(printerIp).trim();
+        
+        // Validation
+        if (!host || host === '' || host === 'localhost' || host === '127.0.0.1') {
+          reject(new Error(`Invalid printer IP: "${host}". Please set printer IP in Settings.`));
+          return;
+        }
+        
+        if (!port || port === 0 || isNaN(port) || port < 1 || port > 65535) {
+          reject(new Error(`Invalid printer port: ${port}. Please set printer port in Settings (1-65535).`));
+          return;
+        }
+        
+        console.log(`🖨️ Attempting to connect to printer ${host}:${port}`);
         console.log(`📦 Data size: ${dataBytes.length} bytes`);
+        console.log(`🔧 Connection params: host="${host}" (${typeof host}), port=${port} (${typeof port})`);
         
         const socket = new TcpSocket();
         let isResolved = false;
 
         socket.setTimeout(10000); // 10 seconds timeout
 
-        socket.connect(printerPort, printerIp, () => {
-          console.log(`✅ Connected to printer ${printerIp}:${printerPort}`);
+        // Use object format for connect (more reliable for react-native-tcp-socket)
+        socket.connect({
+          port: port,
+          host: host
+        }, () => {
+          console.log(`✅ Connected to printer ${host}:${port}`);
           try {
             socket.write(dataBytes);
             console.log(`📤 Sent ${dataBytes.length} bytes to printer`);
