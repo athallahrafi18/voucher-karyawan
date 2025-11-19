@@ -146,13 +146,13 @@ export default function GenerateVoucherScreen() {
           const firstError = printErrors[0];
           let errorMessage = `Gagal mencetak semua voucher (0/${count}).\n\n`;
           
-          // Check if TCP socket not available
-          if (firstError.error && firstError.error.includes('TCP Socket')) {
-            errorMessage += `⚠️ TCP Socket library tidak tersedia.\n\n` +
+          // Check if thermal printer library not available
+          if (firstError.error && (firstError.error.includes('Thermal Printer') || firstError.error.includes('tidak tersedia') || firstError.error.includes('Expo Go'))) {
+            errorMessage += `⚠️ Thermal Printer library tidak tersedia.\n\n` +
                            `Pastikan:\n` +
                            `- Menggunakan APK build (bukan Expo Go)\n` +
                            `- APK sudah di-build dengan EAS Build\n` +
-                           `- Native module react-native-tcp-socket terinstall\n\n`;
+                           `- Native module react-native-thermal-receipt-printer terinstall\n\n`;
           } else {
             // Show detailed error from first failed print
             errorMessage += `Error: ${firstError.error}\n\n`;

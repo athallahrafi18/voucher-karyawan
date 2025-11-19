@@ -88,13 +88,11 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
       const host = String(printerIp).trim();
       
       if (!host || host === '' || host === 'localhost' || host === '127.0.0.1') {
-        reject(new Error(`Invalid printer IP: "${host}". Please set printer IP in Settings.`));
-        return;
+        throw new Error(`Invalid printer IP: "${host}". Please set printer IP in Settings.`);
       }
       
       if (!port || port === 0 || isNaN(port) || port < 1 || port > 65535) {
-        reject(new Error(`Invalid printer port: ${port}. Please set printer port in Settings (1-65535).`));
-        return;
+        throw new Error(`Invalid printer port: ${port}. Please set printer port in Settings (1-65535).`);
       }
       
       console.log(`🖨️ Attempting to connect to printer ${host}:${port}`);
@@ -103,75 +101,79 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
       // Use thermal printer library if available
       if (isThermalPrinterAvailable && NetPrinter) {
         try {
-          // react-native-thermal-receipt-printer NetPrinter format:
-          // NetPrinter.printText({ host, port, text })
-          // Or NetPrinter.printRaw({ host, port, data })
+          // react-native-thermal-receipt-printer NetPrinter API:
+          // Methods available: init, getDeviceList, connectPrinter, closeConn, printText, printBill
+          // Flow: connectPrinter({ host, port }) -> printText(text) or printBill(text) -> closeConn()
           
-          // Convert ESC/POS string to base64 or use printRaw
-          // For ESC/POS raw commands, use printRaw
-          const printerConfig = {
+          console.log(`🔧 Connection config:`, JSON.stringify({ host, port }));
+          
+          // Step 1: Connect to printer
+          console.log(`🔌 Step 1: Connecting to printer ${host}:${port}...`);
+          await NetPrinter.connectPrinter({
             host: host,
             port: port,
-          };
-          
-          console.log(`🔧 Connection config:`, JSON.stringify(printerConfig));
-          
-          // Use printRaw for ESC/POS commands
-          // react-native-thermal-receipt-printer printRaw accepts base64 string
-          const encoder = new TextEncoder();
-          const dataBytes = encoder.encode(printData);
-          
-          // Convert Uint8Array to base64
-          // React Native doesn't have Buffer or btoa, use alternative method
-          let base64Data;
-          try {
-            // Method 1: Try using btoa if available (some React Native versions have it)
-            const binaryString = Array.from(dataBytes, byte => String.fromCharCode(byte)).join('');
-            if (typeof btoa !== 'undefined') {
-              base64Data = btoa(binaryString);
-            } else {
-              // Method 2: Use base64 encoding library or manual conversion
-              // For React Native, we can use a simple base64 encoder
-              base64Data = require('base-64').encode(binaryString);
-            }
-          } catch (e) {
-            // Fallback: Convert to base64 manually
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-            let result = '';
-            let i = 0;
-            while (i < dataBytes.length) {
-              const a = dataBytes[i++];
-              const b = i < dataBytes.length ? dataBytes[i++] : 0;
-              const c = i < dataBytes.length ? dataBytes[i++] : 0;
-              const bitmap = (a << 16) | (b << 8) | c;
-              result += chars.charAt((bitmap >> 18) & 63);
-              result += chars.charAt((bitmap >> 12) & 63);
-              result += i - 2 < dataBytes.length ? chars.charAt((bitmap >> 6) & 63) : '=';
-              result += i - 1 < dataBytes.length ? chars.charAt(bitmap & 63) : '=';
-            }
-            base64Data = result;
-          }
-          
-          console.log(`📤 Sending ${dataBytes.length} bytes to printer...`);
-          
-          // Print using NetPrinter.printRaw
-          // Check if printRaw exists and is a function
-          if (!NetPrinter.printRaw || typeof NetPrinter.printRaw !== 'function') {
-            console.error('❌ NetPrinter.printRaw is not a function');
-            console.error('❌ NetPrinter methods:', Object.keys(NetPrinter || {}));
-            throw new Error('NetPrinter.printRaw is not available. Check library API.');
-          }
-          
-          console.log('🔧 Calling NetPrinter.printRaw with:', { host, port, dataLength: base64Data.length });
-          
-          // Try object format first: printRaw({ host, port, data })
-          await NetPrinter.printRaw({
-            host: host,
-            port: port,
-            data: base64Data,
           });
+          console.log(`✅ Connected to printer ${host}:${port}`);
           
-          console.log(`✅ Successfully sent data to printer ${host}:${port}`);
+          try {
+            // Step 2: Print ESC/POS commands
+            // For ESC/POS raw commands, we can use printText with the raw string
+            // Or convert to base64 and use printBill if it supports raw data
+            console.log(`📤 Step 2: Sending ${printData.length} bytes to printer...`);
+            
+            // Try printBill first (might support raw ESC/POS)
+            // If not, fallback to printText
+            if (NetPrinter.printBill && typeof NetPrinter.printBill === 'function') {
+              // Convert ESC/POS string to base64 for printBill
+              const encoder = new TextEncoder();
+              const dataBytes = encoder.encode(printData);
+              const binaryString = Array.from(dataBytes, byte => String.fromCharCode(byte)).join('');
+              
+              let base64Data;
+              try {
+                if (typeof btoa !== 'undefined') {
+                  base64Data = btoa(binaryString);
+                } else {
+                  base64Data = require('base-64').encode(binaryString);
+                }
+              } catch (e) {
+                // Manual base64 encoding
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+                let result = '';
+                let i = 0;
+                while (i < dataBytes.length) {
+                  const a = dataBytes[i++];
+                  const b = i < dataBytes.length ? dataBytes[i++] : 0;
+                  const c = i < dataBytes.length ? dataBytes[i++] : 0;
+                  const bitmap = (a << 16) | (b << 8) | c;
+                  result += chars.charAt((bitmap >> 18) & 63);
+                  result += chars.charAt((bitmap >> 12) & 63);
+                  result += i - 2 < dataBytes.length ? chars.charAt((bitmap >> 6) & 63) : '=';
+                  result += i - 1 < dataBytes.length ? chars.charAt(bitmap & 63) : '=';
+                }
+                base64Data = result;
+              }
+              
+              console.log(`📤 Using printBill with base64 data (${base64Data.length} chars)`);
+              await NetPrinter.printBill(base64Data);
+            } else if (NetPrinter.printText && typeof NetPrinter.printText === 'function') {
+              // Fallback: Use printText with ESC/POS string directly
+              console.log(`📤 Using printText with ESC/POS string`);
+              await NetPrinter.printText(printData);
+            } else {
+              throw new Error('Neither printBill nor printText is available');
+            }
+            
+            console.log(`✅ Successfully sent data to printer ${host}:${port}`);
+            
+          } finally {
+            // Step 3: Close connection
+            console.log(`🔌 Step 3: Closing connection...`);
+            if (NetPrinter.closeConn && typeof NetPrinter.closeConn === 'function') {
+              await NetPrinter.closeConn();
+              console.log(`✅ Connection closed`);
+            }
+          }
           
         } catch (printError) {
           console.error('❌ ========== PRINTER ERROR ==========');
