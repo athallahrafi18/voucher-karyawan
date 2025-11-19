@@ -103,16 +103,14 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
         try {
           // react-native-thermal-receipt-printer NetPrinter API:
           // Methods available: init, getDeviceList, connectPrinter, closeConn, printText, printBill
-          // Flow: connectPrinter({ host, port }) -> printText(text) or printBill(text) -> closeConn()
+          // Flow: connectPrinter(host: string, port: number) -> printText(text) or printBill(text) -> closeConn()
           
           console.log(`🔧 Connection config:`, JSON.stringify({ host, port }));
           
           // Step 1: Connect to printer
+          // connectPrinter expects (host: string, port: number) as separate parameters
           console.log(`🔌 Step 1: Connecting to printer ${host}:${port}...`);
-          await NetPrinter.connectPrinter({
-            host: host,
-            port: port,
-          });
+          await NetPrinter.connectPrinter(host, port);
           console.log(`✅ Connected to printer ${host}:${port}`);
           
           try {
