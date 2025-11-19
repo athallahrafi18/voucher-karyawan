@@ -96,11 +96,12 @@ export const getSettings = async () => {
 /**
  * Save printer settings
  */
-export const savePrinterSettings = async (printerIp, printerPort) => {
+export const savePrinterSettings = async (printerIp, printerPort, paperSize = '58') => {
   try {
     const settings = {
       printer_ip: printerIp,
       printer_port: printerPort,
+      paper_size: paperSize, // '58' or '80' (mm)
     };
     await AsyncStorage.setItem('printer_settings', JSON.stringify(settings));
   } catch (error) {
@@ -121,12 +122,14 @@ export const getPrinterSettings = async () => {
     return {
       printer_ip: '192.168.110.10',
       printer_port: 9100,
+      paper_size: '58', // Default 58mm
     };
   } catch (error) {
     console.error('Error getting printer settings:', error);
     return {
       printer_ip: '192.168.110.10',
       printer_port: 9100,
+      paper_size: '58',
     };
   }
 };

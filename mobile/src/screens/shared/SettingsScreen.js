@@ -23,6 +23,7 @@ export default function SettingsScreen() {
   const { userRole, logout } = useAuth();
   const [printerIp, setPrinterIp] = useState('192.168.110.10');
   const [printerPort, setPrinterPort] = useState('9100');
+  const [paperSize, setPaperSize] = useState('58'); // '58' or '80'
   const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -34,6 +35,7 @@ export default function SettingsScreen() {
     const settings = await getPrinterSettings();
     setPrinterIp(settings.printer_ip);
     setPrinterPort(String(settings.printer_port));
+    setPaperSize(settings.paper_size || '58');
   };
 
   const handleSavePrinter = async () => {
@@ -53,7 +55,7 @@ export default function SettingsScreen() {
 
     try {
       setSaving(true);
-      await savePrinterSettings(printerIp, port);
+      await savePrinterSettings(printerIp, port, paperSize);
       Alert.alert('Berhasil', 'Setting printer berhasil disimpan');
       setShowPrinterModal(false);
     } catch (error) {
@@ -132,6 +134,16 @@ export default function SettingsScreen() {
                   </Text>
                   <Text style={[styles.infoValue, { fontSize: getFontSize(14) }]}>
                     {printerPort}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <View style={styles.infoLeft}>
+                  <Text style={[styles.infoLabel, { fontSize: getFontSize(14) }]}>
+                    Paper Size:
+                  </Text>
+                  <Text style={[styles.infoValue, { fontSize: getFontSize(14) }]}>
+                    {paperSize}mm
                   </Text>
                 </View>
               </View>
@@ -246,6 +258,44 @@ export default function SettingsScreen() {
                 style={[styles.input, { height: isTablet() ? 56 : 48 }]}
                 contentStyle={{ fontSize: getFontSize(16) }}
               />
+
+              <Text style={[styles.inputLabel, { fontSize: getFontSize(16), marginTop: theme.spacing.md }]}>
+                Paper Size *
+              </Text>
+              <View style={styles.paperSizeContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.paperSizeButton,
+                    paperSize === '58' && styles.paperSizeButtonActive,
+                  ]}
+                  onPress={() => setPaperSize('58')}
+                >
+                  <Text
+                    style={[
+                      styles.paperSizeText,
+                      paperSize === '58' && styles.paperSizeTextActive,
+                    ]}
+                  >
+                    58mm
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.paperSizeButton,
+                    paperSize === '80' && styles.paperSizeButtonActive,
+                  ]}
+                  onPress={() => setPaperSize('80')}
+                >
+                  <Text
+                    style={[
+                      styles.paperSizeText,
+                      paperSize === '80' && styles.paperSizeTextActive,
+                    ]}
+                  >
+                    80mm
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.modalActions}>
                 <Button
@@ -392,6 +442,34 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: theme.colors.primary,
+  },
+  paperSizeContainer: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+  },
+  paperSizeButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 2,
+    borderColor: theme.colors.textSecondary + '50',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+  paperSizeButtonActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary + '20',
+  },
+  paperSizeText: {
+    fontSize: getFontSize(16),
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  paperSizeTextActive: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
   },
   logoutButton: {
     backgroundColor: theme.colors.surface,

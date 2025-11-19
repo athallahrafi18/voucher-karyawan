@@ -13,11 +13,12 @@ import { Card, ActivityIndicator, Checkbox } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { voucherAPI, printAPI, employeeAPI } from '../../services/api';
+import { voucherAPI, employeeAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatCurrency, formatDate, getTodayDate } from '../../utils/formatters';
 import { getPrinterSettings } from '../../utils/storage';
 import { isTablet, getFontSize } from '../../utils/device';
+import { printVouchers } from '../../utils/printer';
 
 export default function GenerateVoucherScreen() {
   const navigation = useNavigation();
@@ -133,12 +134,12 @@ export default function GenerateVoucherScreen() {
         return;
       }
 
-      // Print vouchers
+      // Print vouchers directly from mobile app (like LUNA POS)
       setPrinting(true);
       try {
-        await printAPI.thermal(vouchers, printerIp, printerPort);
+        const printedCount = await printVouchers(vouchers, printerIp, printerPort);
         
-        let message = `${count} voucher berhasil dicetak!`;
+        let message = `${printedCount} voucher berhasil dicetak!`;
         if (skipped > 0) {
           message += `\n(${skipped} karyawan sudah punya voucher hari ini)`;
         }
@@ -159,11 +160,27 @@ export default function GenerateVoucherScreen() {
         );
       } catch (printError) {
         console.error('Print error:', printError);
-        let message = `${count} voucher berhasil dibuat`;
+        let message = `${count} voucher berhasil dibuat di database`;
         if (skipped > 0) {
           message += `\n(${skipped} karyawan sudah punya voucher hari ini)`;
         }
-        message += ', tetapi gagal mencetak. Silakan coba print manual.';
+        
+        // Check if error is about TCP socket not available (Expo Go)
+        if (printError.message && printError.message.includes('Expo Go')) {
+          message += `\n\n⚠️ Printing tidak tersedia di Expo Go.\n\n` +
+                     `Untuk print langsung ke printer, Anda perlu:\n` +
+                     `1. Build aplikasi dengan EAS Build\n` +
+                     `2. Install APK yang sudah di-build\n\n` +
+                     `Voucher sudah tersimpan di database dan bisa di-print nanti setelah build.`;
+        } else {
+          message += `\n\n⚠️ Gagal mencetak ke printer.\n\n` +
+                     `Error: ${printError.message}\n\n` +
+                     `Pastikan:\n` +
+                     `- Printer terhubung ke jaringan yang sama\n` +
+                     `- IP printer benar (${printerIp}:${printerPort})\n` +
+                     `- Printer dalam kondisi siap\n\n` +
+                     `Voucher sudah tersimpan di database.`;
+        }
         
         Alert.alert(
           'Voucher Generated',

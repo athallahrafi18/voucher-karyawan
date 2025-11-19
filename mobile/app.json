@@ -1,39 +1,53 @@
 {
   "expo": {
-    "name": "Voucher Rakan Kuphi",
-    "slug": "voucher-rakan-kuphi",
+    "name": "Voucher Karyawan Rakan Kuphi",
+    "slug": "voucher-karyawan-rakan-kuphi",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#2563EB"
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#D4A574"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rakan.kuphi.voucher"
+      "bundleIdentifier": "com.rakan.kuphi.voucher",
+      "buildNumber": "1.0.0"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#2563EB"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#D4A574"
       },
       "package": "com.rakan.kuphi.voucher",
+      "versionCode": 1,
       "permissions": [
-        "CAMERA"
-      ]
+        "CAMERA",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "blockedPermissions": []
     },
-    "web": {
-    },
+    "web": {},
     "plugins": [
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access camera for scanning vouchers."
+          "cameraPermission": "Aplikasi memerlukan akses kamera untuk memindai barcode voucher."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "eaad4c57-63a8-4d13-b5ce-7a6c82406ffe"
+      }
+    }
   }
 }
-
