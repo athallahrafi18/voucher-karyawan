@@ -9,7 +9,7 @@
 import EscPosGenerator from './escPosGenerator';
 
 // Import thermal printer library
-let ThermalPrinter = null;
+let NetPrinter = null;
 let isThermalPrinterAvailable = false;
 
 try {
@@ -19,30 +19,47 @@ try {
   const ThermalPrinterModule = require('react-native-thermal-receipt-printer');
   
   console.log('📦 ThermalPrinterModule:', ThermalPrinterModule);
+  console.log('📦 ThermalPrinterModule keys:', Object.keys(ThermalPrinterModule || {}));
   
   // react-native-thermal-receipt-printer exports NetPrinter for TCP/LAN connection
+  // Structure: { NetPrinter: { printRaw, printText, ... }, BluetoothPrinter: {...}, ... }
   if (ThermalPrinterModule && ThermalPrinterModule.NetPrinter) {
-    ThermalPrinter = ThermalPrinterModule.NetPrinter;
+    NetPrinter = ThermalPrinterModule.NetPrinter;
     isThermalPrinterAvailable = true;
     console.log('✅ Found NetPrinter at ThermalPrinterModule.NetPrinter');
+    console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
   } else if (ThermalPrinterModule && ThermalPrinterModule.default) {
     if (ThermalPrinterModule.default.NetPrinter) {
-      ThermalPrinter = ThermalPrinterModule.default.NetPrinter;
+      NetPrinter = ThermalPrinterModule.default.NetPrinter;
       isThermalPrinterAvailable = true;
       console.log('✅ Found NetPrinter at ThermalPrinterModule.default.NetPrinter');
-    } else {
-      ThermalPrinter = ThermalPrinterModule.default;
+      console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
+    } else if (ThermalPrinterModule.default && typeof ThermalPrinterModule.default === 'object') {
+      // If default is the module itself with NetPrinter inside
+      NetPrinter = ThermalPrinterModule.default;
       isThermalPrinterAvailable = true;
-      console.log('✅ Found NetPrinter at ThermalPrinterModule.default');
+      console.log('✅ Using ThermalPrinterModule.default as NetPrinter');
+      console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
     }
-  } else if (ThermalPrinterModule) {
-    ThermalPrinter = ThermalPrinterModule;
-    isThermalPrinterAvailable = true;
-    console.log('✅ Found NetPrinter as module');
+  } else if (ThermalPrinterModule && typeof ThermalPrinterModule === 'object') {
+    // Module itself might be the object with NetPrinter
+    if (ThermalPrinterModule.NetPrinter) {
+      NetPrinter = ThermalPrinterModule.NetPrinter;
+      isThermalPrinterAvailable = true;
+      console.log('✅ Found NetPrinter in module object');
+    } else {
+      NetPrinter = ThermalPrinterModule;
+      isThermalPrinterAvailable = true;
+      console.log('✅ Using module as NetPrinter');
+    }
+    console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
   }
   
-  if (isThermalPrinterAvailable) {
+  if (isThermalPrinterAvailable && NetPrinter) {
     console.log('✅ Thermal Printer library available and ready to use');
+    console.log('📦 NetPrinter type:', typeof NetPrinter);
+    console.log('📦 NetPrinter has printRaw:', typeof NetPrinter.printRaw);
+    console.log('📦 NetPrinter has printText:', typeof NetPrinter.printText);
   } else {
     console.warn('⚠️ Thermal Printer not found in module');
   }
@@ -50,7 +67,7 @@ try {
   console.warn('⚠️ Thermal Printer library not available:', e.message);
   console.warn('⚠️ Error details:', e);
   console.warn('⚠️ For direct TCP printing, build with EAS Build (not Expo Go).');
-  ThermalPrinter = null;
+  NetPrinter = null;
   isThermalPrinterAvailable = false;
 }
 
@@ -84,7 +101,7 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
       console.log(`📦 Data size: ${printData.length} bytes`);
       
       // Use thermal printer library if available
-      if (isThermalPrinterAvailable && ThermalPrinter) {
+      if (isThermalPrinterAvailable && NetPrinter) {
         try {
           // react-native-thermal-receipt-printer NetPrinter format:
           // NetPrinter.printText({ host, port, text })
@@ -138,8 +155,17 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
           console.log(`📤 Sending ${dataBytes.length} bytes to printer...`);
           
           // Print using NetPrinter.printRaw
-          // Format: printRaw({ host, port, data: base64String })
-          await ThermalPrinter.printRaw({
+          // Check if printRaw exists and is a function
+          if (!NetPrinter.printRaw || typeof NetPrinter.printRaw !== 'function') {
+            console.error('❌ NetPrinter.printRaw is not a function');
+            console.error('❌ NetPrinter methods:', Object.keys(NetPrinter || {}));
+            throw new Error('NetPrinter.printRaw is not available. Check library API.');
+          }
+          
+          console.log('🔧 Calling NetPrinter.printRaw with:', { host, port, dataLength: base64Data.length });
+          
+          // Try object format first: printRaw({ host, port, data })
+          await NetPrinter.printRaw({
             host: host,
             port: port,
             data: base64Data,
@@ -198,10 +224,14 @@ export const printVouchers = async (vouchers, printerIp, printerPort = 9100) => 
   console.log('🖨️ ========== START PRINTING ==========');
   console.log(`🖨️ Starting to print ${vouchers.length} voucher(s) to ${printerIp}:${printerPort}`);
   console.log(`📡 Thermal Printer available: ${isThermalPrinterAvailable}`);
-  console.log(`🔌 ThermalPrinter type: ${typeof ThermalPrinter}`);
+  console.log(`🔌 NetPrinter type: ${typeof NetPrinter}`);
+  console.log(`🔌 NetPrinter available: ${!!NetPrinter}`);
+  if (NetPrinter) {
+    console.log(`🔌 NetPrinter methods:`, Object.keys(NetPrinter));
+  }
   console.log('🖨️ ====================================');
   
-  if (!isThermalPrinterAvailable || !ThermalPrinter) {
+  if (!isThermalPrinterAvailable || !NetPrinter) {
     const errorMsg = 'Thermal Printer library tidak tersedia. Pastikan menggunakan APK build (bukan Expo Go).';
     console.error('❌', errorMsg);
     throw new Error(errorMsg);
