@@ -137,27 +137,101 @@ export default function GenerateVoucherScreen() {
       // Print vouchers directly from mobile app (like LUNA POS)
       setPrinting(true);
       try {
-        const printedCount = await printVouchers(vouchers, printerIp, printerPort);
+        const printResult = await printVouchers(vouchers, printerIp, printerPort);
+        const printedCount = printResult.printedCount;
+        const printErrors = printResult.errors || [];
         
-        let message = `${printedCount} voucher berhasil dicetak!`;
-        if (skipped > 0) {
-          message += `\n(${skipped} karyawan sudah punya voucher hari ini)`;
-        }
-        
-        Alert.alert(
-          'Berhasil!',
-          message,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.goBack();
-                // Trigger refresh in HomeScreen
-                navigation.getParent()?.navigate('Home');
+        if (printedCount === 0 && printErrors.length > 0) {
+          // All prints failed - show detailed error
+          const firstError = printErrors[0];
+          let errorMessage = `Gagal mencetak semua voucher (0/${count}).\n\n`;
+          
+          // Check if TCP socket not available
+          if (firstError.error && firstError.error.includes('TCP Socket')) {
+            errorMessage += `⚠️ TCP Socket library tidak tersedia.\n\n` +
+                           `Pastikan:\n` +
+                           `- Menggunakan APK build (bukan Expo Go)\n` +
+                           `- APK sudah di-build dengan EAS Build\n` +
+                           `- Native module react-native-tcp-socket terinstall\n\n`;
+          } else {
+            // Show detailed error from first failed print
+            errorMessage += `Error: ${firstError.error}\n\n`;
+            
+            // Add troubleshooting tips based on error
+            if (firstError.errorCode === 'ECONNREFUSED') {
+              errorMessage += `Kemungkinan penyebab:\n` +
+                             `- IP printer salah: ${printerIp}\n` +
+                             `- Port salah: ${printerPort}\n` +
+                             `- Printer tidak ON atau tidak siap\n\n`;
+            } else if (firstError.errorCode === 'ETIMEDOUT' || firstError.errorCode === 'ENETUNREACH') {
+              errorMessage += `Kemungkinan penyebab:\n` +
+                             `- Printer dan tablet tidak di WiFi yang sama\n` +
+                             `- IP printer tidak bisa dijangkau: ${printerIp}\n` +
+                             `- Firewall memblokir koneksi\n\n`;
+            } else {
+              errorMessage += `Pastikan:\n` +
+                             `- Printer terhubung ke jaringan yang sama dengan tablet\n` +
+                             `- IP printer benar: ${printerIp}:${printerPort}\n` +
+                             `- Printer dalam kondisi siap (on dan idle)\n` +
+                             `- Tidak ada firewall yang memblokir koneksi\n\n`;
+            }
+          }
+          
+          errorMessage += `Voucher sudah tersimpan di database (${count} voucher).\n` +
+                         `Anda bisa coba print lagi nanti.`;
+          
+          Alert.alert(
+            'Gagal Print',
+            errorMessage,
+            [{ text: 'OK' }]
+          );
+        } else if (printedCount < count) {
+          // Some prints failed
+          let message = `${printedCount}/${count} voucher berhasil dicetak.`;
+          if (printErrors.length > 0) {
+            message += `\n\n${printErrors.length} voucher gagal dicetak.`;
+            if (printErrors[0].error) {
+              message += `\nError: ${printErrors[0].error}`;
+            }
+          }
+          if (skipped > 0) {
+            message += `\n(${skipped} karyawan sudah punya voucher hari ini)`;
+          }
+          
+          Alert.alert(
+            'Print Sebagian Berhasil',
+            message,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  navigation.goBack();
+                  navigation.getParent()?.navigate('Home');
+                },
               },
-            },
-          ]
-        );
+            ]
+          );
+        } else {
+          // All prints successful
+          let message = `${printedCount} voucher berhasil dicetak!`;
+          if (skipped > 0) {
+            message += `\n(${skipped} karyawan sudah punya voucher hari ini)`;
+          }
+          
+          Alert.alert(
+            'Berhasil!',
+            message,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  navigation.goBack();
+                  navigation.getParent()?.navigate('Home');
+                },
+              },
+            ]
+          );
+        }
       } catch (printError) {
         console.error('Print error:', printError);
         let message = `${count} voucher berhasil dibuat di database`;
@@ -165,9 +239,9 @@ export default function GenerateVoucherScreen() {
           message += `\n(${skipped} karyawan sudah punya voucher hari ini)`;
         }
         
-        // Check if error is about TCP socket not available (Expo Go)
-        if (printError.message && printError.message.includes('Expo Go')) {
-          message += `\n\n⚠️ Printing tidak tersedia di Expo Go.\n\n` +
+        // Check if error is about TCP socket not available
+        if (printError.message && (printError.message.includes('TCP Socket') || printError.message.includes('Expo Go'))) {
+          message += `\n\n⚠️ TCP Socket library tidak tersedia.\n\n` +
                      `Untuk print langsung ke printer, Anda perlu:\n` +
                      `1. Build aplikasi dengan EAS Build\n` +
                      `2. Install APK yang sudah di-build\n\n` +

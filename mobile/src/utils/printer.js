@@ -124,10 +124,35 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
           console.error('❌ Printer error:', error);
           console.error('❌ Error code:', error.code);
           console.error('❌ Error message:', error.message);
+          console.error('❌ Error details:', JSON.stringify(error, null, 2));
+          
           if (!isResolved) {
             isResolved = true;
             socket.destroy();
-            reject(new Error(`Failed to connect to printer: ${error.message || error.code || 'Unknown error'}`));
+            
+            // Build detailed error message
+            let errorMsg = 'Failed to connect to printer';
+            if (error.code) {
+              errorMsg += ` (${error.code})`;
+            }
+            if (error.message) {
+              errorMsg += `: ${error.message}`;
+            } else if (error.code) {
+              // Map common error codes to user-friendly messages
+              const errorCodeMap = {
+                'ECONNREFUSED': 'Connection refused - Printer tidak merespons atau port salah',
+                'ETIMEDOUT': 'Connection timeout - Printer tidak merespons dalam 10 detik',
+                'ENETUNREACH': 'Network unreachable - Tidak bisa mencapai printer di network',
+                'EHOSTUNREACH': 'Host unreachable - IP printer tidak ditemukan',
+                'EADDRINUSE': 'Address already in use',
+                'ECONNRESET': 'Connection reset by printer',
+              };
+              errorMsg += `: ${errorCodeMap[error.code] || 'Unknown network error'}`;
+            } else {
+              errorMsg += ': Unknown error - Cek koneksi network dan IP printer';
+            }
+            
+            reject(new Error(errorMsg));
           }
         });
 
@@ -173,28 +198,55 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
  * @param {Array} vouchers - Array of voucher data
  * @param {string} printerIp - Printer IP address
  * @param {number} printerPort - Printer port
- * @returns {Promise<number>} Number of vouchers printed
+ * @returns {Promise<{printedCount: number, errors: Array}>} Number of vouchers printed and errors
  */
 export const printVouchers = async (vouchers, printerIp, printerPort = 9100) => {
   let printedCount = 0;
+  const errors = [];
+  
+  console.log(`🖨️ Starting to print ${vouchers.length} voucher(s) to ${printerIp}:${printerPort}`);
+  console.log(`📡 TCP Socket available: ${isTcpSocketAvailable}`);
+  console.log(`🔌 TcpSocket type: ${typeof TcpSocket}`);
+  
+  if (!isTcpSocketAvailable || !TcpSocket) {
+    const errorMsg = 'TCP Socket library tidak tersedia. Pastikan menggunakan APK build (bukan Expo Go).';
+    console.error('❌', errorMsg);
+    throw new Error(errorMsg);
+  }
   
   for (let i = 0; i < vouchers.length; i++) {
     const voucher = vouchers[i];
     
     try {
+      console.log(`🖨️ Printing voucher ${i + 1}/${vouchers.length} - ${voucher.voucher_code || voucher.barcode}`);
       await printVoucher(voucher, printerIp, printerPort);
       printedCount++;
+      console.log(`✅ Voucher ${i + 1} printed successfully`);
       
       // Small delay between prints
       if (i < vouchers.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     } catch (error) {
-      console.error(`Error printing voucher ${i + 1}:`, error);
+      const errorInfo = {
+        voucherIndex: i + 1,
+        voucherCode: voucher.voucher_code || voucher.barcode,
+        error: error.message || error.toString(),
+        errorCode: error.code
+      };
+      errors.push(errorInfo);
+      console.error(`❌ Error printing voucher ${i + 1} (${voucher.voucher_code || voucher.barcode}):`, error);
+      console.error(`❌ Error details:`, errorInfo);
       // Continue with next voucher even if one fails
     }
   }
   
-  return printedCount;
+  console.log(`📊 Print summary: ${printedCount}/${vouchers.length} successful, ${errors.length} failed`);
+  
+  if (errors.length > 0) {
+    console.error('❌ Print errors:', errors);
+  }
+  
+  return { printedCount, errors };
 };
 
