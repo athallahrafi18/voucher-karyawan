@@ -208,38 +208,30 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
           }
           
           // Step 1: Connect to printer
-          // connectPrinter expects (host: string, port: string) as separate parameters
-          // Port might need to be string, not number
-          const portString = String(port);
-          console.log(`🔌 Step 1: Connecting to printer ${host}:${portString}...`);
-          console.log(`🔌 Host type: ${typeof host}, Port type: ${typeof portString}`);
+          // connectPrinter expects (host: string, port: number) as separate parameters
+          // Port MUST be number, not string
+          console.log(`🔌 Step 1: Connecting to printer ${host}:${port}...`);
+          console.log(`🔌 Host type: ${typeof host}, Port type: ${typeof port}`);
           
-          // Wrap in try-catch to prevent native crash
-          try {
-            await NetPrinter.connectPrinter(host, portString);
-            console.log(`✅ Connected to printer ${host}:${portString}`);
-          } catch (connectError) {
-            console.error('❌ Connect error:', connectError);
-            // Try with number if string fails
-            if (connectError.message && connectError.message.includes('string')) {
-              console.log(`🔄 Retrying with port as number...`);
-              await NetPrinter.connectPrinter(host, port);
-              console.log(`✅ Connected to printer ${host}:${port}`);
-            } else {
-              throw connectError;
-            }
-          }
+          // Connect with port as number (not string)
+          await NetPrinter.connectPrinter(host, port);
+          console.log(`✅ Connected to printer ${host}:${port}`);
           
           try {
             // Step 2: Print ESC/POS commands
-            // For ESC/POS raw commands, we can use printText with the raw string
-            // Or convert to base64 and use printBill if it supports raw data
+            // For raw ESC/POS commands, use printText directly with the ESC/POS string
+            // This is similar to backend which uses socket.write(data) directly
             console.log(`📤 Step 2: Sending ${printData.length} bytes to printer...`);
+            console.log(`📤 Print data preview (first 100 chars):`, printData.substring(0, 100));
             
-            // Try printBill first (might support raw ESC/POS)
-            // If not, fallback to printText
-            if (NetPrinter.printBill && typeof NetPrinter.printBill === 'function') {
-              // Convert ESC/POS string to base64 for printBill
+            // Use printText for raw ESC/POS commands (most compatible)
+            if (NetPrinter.printText && typeof NetPrinter.printText === 'function') {
+              console.log(`📤 Using printText with ESC/POS string (${printData.length} bytes)`);
+              await NetPrinter.printText(printData);
+              console.log(`✅ printText completed`);
+            } else if (NetPrinter.printBill && typeof NetPrinter.printBill === 'function') {
+              // Fallback: Try printBill with base64 (less reliable for raw ESC/POS)
+              console.log(`⚠️ printText not available, trying printBill with base64...`);
               const encoder = new TextEncoder();
               const dataBytes = encoder.encode(printData);
               const binaryString = Array.from(dataBytes, byte => String.fromCharCode(byte)).join('');
@@ -271,12 +263,9 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
               
               console.log(`📤 Using printBill with base64 data (${base64Data.length} chars)`);
               await NetPrinter.printBill(base64Data);
-            } else if (NetPrinter.printText && typeof NetPrinter.printText === 'function') {
-              // Fallback: Use printText with ESC/POS string directly
-              console.log(`📤 Using printText with ESC/POS string`);
-              await NetPrinter.printText(printData);
+              console.log(`✅ printBill completed`);
             } else {
-              throw new Error('Neither printBill nor printText is available');
+              throw new Error('Neither printText nor printBill is available');
             }
             
             console.log(`✅ Successfully sent data to printer ${host}:${port}`);
