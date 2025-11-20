@@ -1,6 +1,6 @@
 /**
  * Print directly to thermal printer via TCP/LAN connection
- * Using react-native-thermal-receipt-printer (compatible with Expo SDK 54)
+ * Using @haroldtran/react-native-thermal-printer (compatible with Expo SDK 54)
  * 
  * Note: Requires development build or production build (EAS Build)
  * Will NOT work in Expo Go
@@ -13,65 +13,19 @@ let NetPrinter = null;
 let isThermalPrinterAvailable = false;
 
 try {
-  // react-native-thermal-receipt-printer requires native module
+  // @haroldtran/react-native-thermal-printer requires native module
   // This will work in development build or production build (EAS Build)
   // Will NOT work in Expo Go
-  let ThermalPrinterModule;
-  try {
-    ThermalPrinterModule = require('react-native-thermal-receipt-printer');
-  } catch (requireError) {
-    console.error('❌ Failed to require thermal printer module:', requireError);
-    throw requireError;
-  }
+  const { NetPrinter: NetPrinterModule } = require('@haroldtran/react-native-thermal-printer');
   
-  if (!ThermalPrinterModule) {
-    throw new Error('ThermalPrinterModule is null or undefined');
-  }
-  
-  console.log('📦 ThermalPrinterModule:', ThermalPrinterModule);
-  console.log('📦 ThermalPrinterModule keys:', Object.keys(ThermalPrinterModule || {}));
-  
-  // react-native-thermal-receipt-printer exports NetPrinter for TCP/LAN connection
-  // Structure: { NetPrinter: { printRaw, printText, ... }, BluetoothPrinter: {...}, ... }
-  if (ThermalPrinterModule && ThermalPrinterModule.NetPrinter) {
-    NetPrinter = ThermalPrinterModule.NetPrinter;
+  if (NetPrinterModule) {
+    NetPrinter = NetPrinterModule;
     isThermalPrinterAvailable = true;
-    console.log('✅ Found NetPrinter at ThermalPrinterModule.NetPrinter');
-    console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
-  } else if (ThermalPrinterModule && ThermalPrinterModule.default) {
-    if (ThermalPrinterModule.default.NetPrinter) {
-      NetPrinter = ThermalPrinterModule.default.NetPrinter;
-      isThermalPrinterAvailable = true;
-      console.log('✅ Found NetPrinter at ThermalPrinterModule.default.NetPrinter');
-      console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
-    } else if (ThermalPrinterModule.default && typeof ThermalPrinterModule.default === 'object') {
-      // If default is the module itself with NetPrinter inside
-      NetPrinter = ThermalPrinterModule.default;
-      isThermalPrinterAvailable = true;
-      console.log('✅ Using ThermalPrinterModule.default as NetPrinter');
-      console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
-    }
-  } else if (ThermalPrinterModule && typeof ThermalPrinterModule === 'object') {
-    // Module itself might be the object with NetPrinter
-    if (ThermalPrinterModule.NetPrinter) {
-      NetPrinter = ThermalPrinterModule.NetPrinter;
-      isThermalPrinterAvailable = true;
-      console.log('✅ Found NetPrinter in module object');
-    } else {
-      NetPrinter = ThermalPrinterModule;
-      isThermalPrinterAvailable = true;
-      console.log('✅ Using module as NetPrinter');
-    }
-    console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
-  }
-  
-  if (isThermalPrinterAvailable && NetPrinter) {
-    console.log('✅ Thermal Printer library available and ready to use');
+    console.log('✅ Thermal Printer library (@haroldtran/react-native-thermal-printer) loaded successfully');
     console.log('📦 NetPrinter type:', typeof NetPrinter);
-    console.log('📦 NetPrinter has printRaw:', typeof NetPrinter.printRaw);
-    console.log('📦 NetPrinter has printText:', typeof NetPrinter.printText);
+    console.log('📦 NetPrinter methods:', Object.keys(NetPrinter || {}));
   } else {
-    console.warn('⚠️ Thermal Printer not found in module');
+    console.warn('⚠️ NetPrinter not found in module');
   }
 } catch (e) {
   console.warn('⚠️ Thermal Printer library not available:', e.message);
@@ -191,9 +145,9 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
       // Use thermal printer library if available
       if (isThermalPrinterAvailable && NetPrinter) {
         try {
-          // react-native-thermal-receipt-printer NetPrinter API:
-          // Methods available: init, getDeviceList, connectPrinter, closeConn, printText, printBill
-          // Flow: init() -> connectPrinter(host: string, port: string) -> printText(text) or printBill(text) -> closeConn()
+          // @haroldtran/react-native-thermal-printer NetPrinter API:
+          // Methods: init(), connectPrinter(host, port, timeout), printText(text), cutPaper(), closeConn()
+          // Flow: init() -> connectPrinter(host, port, timeout) -> printText(text) -> closeConn()
           
           console.log(`🔧 Connection config:`, JSON.stringify({ host, port }));
           
@@ -208,64 +162,43 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
           }
           
           // Step 1: Connect to printer
-          // connectPrinter expects (host: string, port: number) as separate parameters
-          // Port MUST be number, not string
+          // connectPrinter(host: string, port: number, timeout?: number)
+          // timeout is optional (default: 10000ms)
           console.log(`🔌 Step 1: Connecting to printer ${host}:${port}...`);
           console.log(`🔌 Host type: ${typeof host}, Port type: ${typeof port}`);
           
-          // Connect with port as number (not string)
-          await NetPrinter.connectPrinter(host, port);
+          // Connect with port as number and timeout 10 seconds
+          await NetPrinter.connectPrinter(host, port, 10000);
           console.log(`✅ Connected to printer ${host}:${port}`);
           
           try {
             // Step 2: Print ESC/POS commands
             // For raw ESC/POS commands, use printText directly with the ESC/POS string
-            // This is similar to backend which uses socket.write(data) directly
+            // This library should handle raw ESC/POS better than the previous one
             console.log(`📤 Step 2: Sending ${printData.length} bytes to printer...`);
             console.log(`📤 Print data preview (first 100 chars):`, printData.substring(0, 100));
+            console.log(`📤 Data type: ${typeof printData}, Length: ${printData.length}`);
             
-            // Use printText for raw ESC/POS commands (most compatible)
+            // Use printText for raw ESC/POS commands
             if (NetPrinter.printText && typeof NetPrinter.printText === 'function') {
               console.log(`📤 Using printText with ESC/POS string (${printData.length} bytes)`);
-              await NetPrinter.printText(printData);
-              console.log(`✅ printText completed`);
-            } else if (NetPrinter.printBill && typeof NetPrinter.printBill === 'function') {
-              // Fallback: Try printBill with base64 (less reliable for raw ESC/POS)
-              console.log(`⚠️ printText not available, trying printBill with base64...`);
-              const encoder = new TextEncoder();
-              const dataBytes = encoder.encode(printData);
-              const binaryString = Array.from(dataBytes, byte => String.fromCharCode(byte)).join('');
               
-              let base64Data;
               try {
-                if (typeof btoa !== 'undefined') {
-                  base64Data = btoa(binaryString);
-                } else {
-                  base64Data = require('base-64').encode(binaryString);
-                }
-              } catch (e) {
-                // Manual base64 encoding
-                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-                let result = '';
-                let i = 0;
-                while (i < dataBytes.length) {
-                  const a = dataBytes[i++];
-                  const b = i < dataBytes.length ? dataBytes[i++] : 0;
-                  const c = i < dataBytes.length ? dataBytes[i++] : 0;
-                  const bitmap = (a << 16) | (b << 8) | c;
-                  result += chars.charAt((bitmap >> 18) & 63);
-                  result += chars.charAt((bitmap >> 12) & 63);
-                  result += i - 2 < dataBytes.length ? chars.charAt((bitmap >> 6) & 63) : '=';
-                  result += i - 1 < dataBytes.length ? chars.charAt(bitmap & 63) : '=';
-                }
-                base64Data = result;
+                // Send data to printer
+                await NetPrinter.printText(printData);
+                
+                // Add delay to ensure printer processes the data
+                // Some printers need time to process ESC/POS commands
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                console.log(`✅ printText completed successfully`);
+              } catch (printTextError) {
+                console.error(`❌ printText failed:`, printTextError);
+                console.error(`❌ Error details:`, printTextError.message);
+                throw printTextError;
               }
-              
-              console.log(`📤 Using printBill with base64 data (${base64Data.length} chars)`);
-              await NetPrinter.printBill(base64Data);
-              console.log(`✅ printBill completed`);
             } else {
-              throw new Error('Neither printText nor printBill is available');
+              throw new Error('NetPrinter.printText() is not available');
             }
             
             console.log(`✅ Successfully sent data to printer ${host}:${port}`);

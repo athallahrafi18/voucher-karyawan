@@ -18,7 +18,6 @@ import { theme } from '../../config/theme';
 import { formatCurrency, formatDate, getTodayDate } from '../../utils/formatters';
 import { getPrinterSettings } from '../../utils/storage';
 import { isTablet, getFontSize } from '../../utils/device';
-import { printVouchers } from '../../utils/printer';
 
 export default function GenerateVoucherScreen() {
   const navigation = useNavigation();
@@ -134,9 +133,11 @@ export default function GenerateVoucherScreen() {
         return;
       }
 
-      // Print vouchers directly from mobile app (like LUNA POS)
+      // Print vouchers directly from mobile app (LAN printer - must use direct print)
+      // Backend print API won't work because printer is on local LAN, not accessible from cloud
       setPrinting(true);
       try {
+        const { printVouchers } = require('../../utils/printer');
         const printResult = await printVouchers(vouchers, printerIp, printerPort);
         const printedCount = printResult.printedCount;
         const printErrors = printResult.errors || [];
