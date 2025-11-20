@@ -16,7 +16,17 @@ try {
   // react-native-thermal-receipt-printer requires native module
   // This will work in development build or production build (EAS Build)
   // Will NOT work in Expo Go
-  const ThermalPrinterModule = require('react-native-thermal-receipt-printer');
+  let ThermalPrinterModule;
+  try {
+    ThermalPrinterModule = require('react-native-thermal-receipt-printer');
+  } catch (requireError) {
+    console.error('❌ Failed to require thermal printer module:', requireError);
+    throw requireError;
+  }
+  
+  if (!ThermalPrinterModule) {
+    throw new Error('ThermalPrinterModule is null or undefined');
+  }
   
   console.log('📦 ThermalPrinterModule:', ThermalPrinterModule);
   console.log('📦 ThermalPrinterModule keys:', Object.keys(ThermalPrinterModule || {}));
@@ -71,6 +81,66 @@ try {
   isThermalPrinterAvailable = false;
 }
 
+// Global init flag - track if printer has been initialized
+let isPrinterInitialized = false;
+let initPromise = null; // Store init promise to prevent multiple concurrent inits
+
+/**
+ * Initialize printer library (call once before first print)
+ * This MUST be called successfully before connectPrinter() to avoid NullPointerException
+ * @returns {Promise<void>}
+ */
+export const initPrinter = async () => {
+  // If already initialized, return immediately
+  if (isPrinterInitialized) {
+    console.log('✅ Printer already initialized');
+    return;
+  }
+  
+  // If init is in progress, wait for it
+  if (initPromise) {
+    console.log('⏳ Printer initialization in progress, waiting...');
+    await initPromise;
+    return;
+  }
+  
+  // Check if library is available
+  if (!isThermalPrinterAvailable || !NetPrinter) {
+    throw new Error('Thermal Printer library not available. Cannot initialize.');
+  }
+  
+  // Check if init method exists
+  if (!NetPrinter.init || typeof NetPrinter.init !== 'function') {
+    throw new Error('NetPrinter.init() is not available. Library may not be properly installed.');
+  }
+  
+  // Start initialization
+  initPromise = (async () => {
+    try {
+      console.log('🔧 Initializing printer library...');
+      console.log('📦 NetPrinter.init type:', typeof NetPrinter.init);
+      
+      // Call init() - this is CRITICAL to avoid NullPointerException
+      await NetPrinter.init();
+      
+      // Delay to ensure adapter is ready (critical for native module)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      isPrinterInitialized = true;
+      console.log('✅ Printer library initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize printer library:', error);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error stack:', error.stack);
+      isPrinterInitialized = false;
+      initPromise = null;
+      throw new Error(`Failed to initialize printer library: ${error.message}`);
+    }
+  })();
+  
+  await initPromise;
+};
+
 /**
  * Print voucher directly to printer via TCP/LAN
  * @param {Object} voucher - Voucher data
@@ -79,6 +149,19 @@ try {
  * @returns {Promise<void>}
  */
 export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
+  // Guard: Ensure library is available before proceeding
+  if (!isThermalPrinterAvailable || !NetPrinter) {
+    throw new Error(
+      `Printing tidak tersedia di Expo Go.\n\n` +
+      `Untuk print langsung ke printer, Anda perlu:\n` +
+      `1. Build aplikasi dengan EAS Build (development build)\n` +
+      `2. Install APK yang sudah di-build\n\n` +
+      `Voucher sudah berhasil dibuat di database, ` +
+      `tapi tidak bisa di-print saat ini.\n\n` +
+      `IP Printer: ${printerIp}:${printerPort}`
+    );
+  }
+  
   try {
       // Generate ESC/POS commands
       const printData = EscPosGenerator.generateVoucherReceipt(voucher);
@@ -97,21 +180,55 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
       
       console.log(`🖨️ Attempting to connect to printer ${host}:${port}`);
       console.log(`📦 Data size: ${printData.length} bytes`);
+      console.log(`📦 NetPrinter available: ${!!NetPrinter}`);
+      console.log(`📦 NetPrinter type: ${typeof NetPrinter}`);
+      
+      // Double check NetPrinter is still available
+      if (!NetPrinter || typeof NetPrinter !== 'object') {
+        throw new Error('NetPrinter is not available or invalid');
+      }
       
       // Use thermal printer library if available
       if (isThermalPrinterAvailable && NetPrinter) {
         try {
           // react-native-thermal-receipt-printer NetPrinter API:
           // Methods available: init, getDeviceList, connectPrinter, closeConn, printText, printBill
-          // Flow: connectPrinter(host: string, port: number) -> printText(text) or printBill(text) -> closeConn()
+          // Flow: init() -> connectPrinter(host: string, port: string) -> printText(text) or printBill(text) -> closeConn()
           
           console.log(`🔧 Connection config:`, JSON.stringify({ host, port }));
           
+          // Step 0: Initialize printer library (CRITICAL - must be done before connectPrinter)
+          // This prevents NullPointerException: PrinterAdapter.selectDevice() on null object
+          if (!isPrinterInitialized) {
+            console.log(`🔧 Step 0: Initializing printer library (required before connect)...`);
+            await initPrinter();
+            console.log(`✅ Printer library ready for connection`);
+          } else {
+            console.log(`✅ Printer library already initialized`);
+          }
+          
           // Step 1: Connect to printer
-          // connectPrinter expects (host: string, port: number) as separate parameters
-          console.log(`🔌 Step 1: Connecting to printer ${host}:${port}...`);
-          await NetPrinter.connectPrinter(host, port);
-          console.log(`✅ Connected to printer ${host}:${port}`);
+          // connectPrinter expects (host: string, port: string) as separate parameters
+          // Port might need to be string, not number
+          const portString = String(port);
+          console.log(`🔌 Step 1: Connecting to printer ${host}:${portString}...`);
+          console.log(`🔌 Host type: ${typeof host}, Port type: ${typeof portString}`);
+          
+          // Wrap in try-catch to prevent native crash
+          try {
+            await NetPrinter.connectPrinter(host, portString);
+            console.log(`✅ Connected to printer ${host}:${portString}`);
+          } catch (connectError) {
+            console.error('❌ Connect error:', connectError);
+            // Try with number if string fails
+            if (connectError.message && connectError.message.includes('string')) {
+              console.log(`🔄 Retrying with port as number...`);
+              await NetPrinter.connectPrinter(host, port);
+              console.log(`✅ Connected to printer ${host}:${port}`);
+            } else {
+              throw connectError;
+            }
+          }
           
           try {
             // Step 2: Print ESC/POS commands
