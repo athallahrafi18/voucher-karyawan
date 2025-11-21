@@ -129,7 +129,7 @@ export const getPrinterSettings = async () => {
     return {
       printer_ip: '192.168.110.10',
       printer_port: 9100,
-      paper_size: '58',
+      paper_size: '80',
     };
   }
 };

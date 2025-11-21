@@ -36,12 +36,64 @@ class EscPosGenerator {
     return this.ESC + 'E' + (enabled ? '\x01' : '\x00');
   }
 
-  // Print line
+  // Print line (for 80mm paper, max 48 characters)
   static line() {
-    return '================================' + this.LF;
+    return '================================================' + this.LF;
   }
 
-  // Generate voucher receipt
+  // Generate barcode (CODE128 - most compatible, supports alphanumeric)
+  // Format: GS k <type> <n> <data>
+  // type: 73 = CODE128 (variable length)
+  // n: length of data (1 byte, 0-255)
+  static barcode128(data) {
+    const dataStr = String(data);
+    const length = dataStr.length;
+    if (length === 0) {
+      throw new Error('Barcode data cannot be empty');
+    }
+    if (length > 255) {
+      throw new Error('Barcode data too long (max 255 characters)');
+    }
+    // GS k 73 n data
+    // For variable length barcodes, n is the length byte
+    return this.GS + 'k' + String.fromCharCode(73) + String.fromCharCode(length) + dataStr;
+  }
+
+  // Generate barcode (CODE39 - alternative, more compatible with older printers)
+  // Format: GS k <type> <n> <data>
+  // type: 4 = CODE39 (variable length)
+  // n: length of data (1 byte, 0-255)
+  static barcode39(data) {
+    const dataStr = String(data);
+    const length = dataStr.length;
+    if (length === 0) {
+      throw new Error('Barcode data cannot be empty');
+    }
+    if (length > 255) {
+      throw new Error('Barcode data too long (max 255 characters)');
+    }
+    // GS k 4 n data
+    // For variable length barcodes, n is the length byte
+    return this.GS + 'k' + String.fromCharCode(4) + String.fromCharCode(length) + dataStr;
+  }
+
+  // Set barcode height (default 50, range 1-255)
+  static barcodeHeight(height = 50) {
+    return this.GS + 'h' + String.fromCharCode(height);
+  }
+
+  // Set barcode width (default 2, range 2-6)
+  static barcodeWidth(width = 2) {
+    return this.GS + 'w' + String.fromCharCode(width);
+  }
+
+  // Set barcode HRI (Human Readable Interpretation) position
+  // 0 = none, 1 = above, 2 = below, 3 = above and below
+  static barcodeHRI(position = 2) {
+    return this.GS + 'H' + String.fromCharCode(position);
+  }
+
+  // Generate voucher receipt (optimized for 80mm paper)
   static generateVoucherReceipt(voucher) {
     let commands = '';
 
@@ -52,27 +104,38 @@ class EscPosGenerator {
     commands += this.align('center');
     commands += this.textSize(2, 2);
     commands += this.bold(true);
-    commands += '      RAKAN KUPHI' + this.LF;
+    commands += 'RAKAN KUPHI' + this.LF;
     commands += this.textSize(1, 1);
-    commands += '   Voucher Makan Karyawan' + this.LF;
+    commands += this.bold(false);
+    commands += 'Voucher Makan Karyawan' + this.LF;
     commands += this.line();
     commands += this.LF;
 
-    // Nominal (large, bold)
-    commands += this.textSize(3, 3);
+    // Nominal (large, bold, center)
+    commands += this.align('center');
+    commands += this.textSize(2, 2);
     commands += this.bold(true);
-    commands += '      Rp 10.000' + this.LF;
+    const nominal = voucher.nominal || 10000;
+    const nominalFormatted = 'Rp ' + nominal.toLocaleString('id-ID');
+    commands += nominalFormatted + this.LF;
+    commands += this.textSize(1, 1);
+    commands += this.bold(false);
     commands += this.LF;
 
     // Reset text size
     commands += this.textSize(1, 1);
     commands += this.bold(false);
-    commands += '   Berlaku di:' + this.LF;
-    commands += '   • Martabak Rakan' + this.LF;
-    commands += '   • Mie Aceh Rakan' + this.LF;
+    commands += this.align('left');
+    commands += 'Berlaku untuk menu:' + this.LF;
+    commands += '  - Martabak Original' + this.LF;
+    commands += '  - Mie Aceh Original' + this.LF;
+    commands += '  - Indomie/Bangladesh Original' + this.LF;
+    commands += '  - Nasi Goreng/Nasi Goreng kampung Original' + this.LF;
+    commands += this.LF;
+    commands += this.line();
     commands += this.LF;
 
-    // Voucher details
+    // Voucher details (left aligned)
     commands += this.align('left');
     
     // Employee name (if available)
@@ -80,20 +143,17 @@ class EscPosGenerator {
       commands += this.bold(true);
       commands += 'Nama: ' + voucher.employee_name + this.LF;
       commands += this.bold(false);
-      commands += this.LF;
     }
     
     // Voucher code (random code like Grab)
     if (voucher.voucher_code) {
-      commands += this.textSize(2, 2);
-      commands += this.bold(true);
       commands += 'Kode: ' + voucher.voucher_code + this.LF;
-      commands += this.textSize(1, 1);
-      commands += this.bold(false);
-      commands += this.LF;
     }
     
-    commands += 'No Voucher: ' + voucher.voucher_number + this.LF;
+    // No Voucher
+    if (voucher.voucher_number) {
+      commands += 'No Voucher: ' + voucher.voucher_number + this.LF;
+    }
     
     // Format date: DD/MM/YYYY
     const date = new Date(voucher.issue_date);
@@ -103,20 +163,54 @@ class EscPosGenerator {
     commands += 'Tanggal: ' + formattedDate + this.LF;
     commands += 'Berlaku: Hari ini saja' + this.LF;
     commands += this.LF;
-
-    // Barcode (center)
-    commands += this.align('center');
-    commands += '[BARCODE: ' + (voucher.voucher_code || voucher.barcode) + ']' + this.LF;
-    commands += this.LF;
-
-    // Footer line
     commands += this.line();
     commands += this.LF;
+
+    // Barcode (center aligned, with ESC/POS barcode command)
+    commands += this.align('center');
+    const barcodeData = voucher.barcode || voucher.voucher_code || '';
+    
+    if (barcodeData) {
+      // Set barcode parameters BEFORE printing barcode
+      // Height: 80 dots (good for scanning, not too tall)
+      commands += this.barcodeHeight(80);
+      // Width: 3 (good readability, not too wide)
+      commands += this.barcodeWidth(3);
+      // HRI: 2 = show text below barcode (for manual entry if scanner fails)
+      commands += this.barcodeHRI(2);
+      
+      // Print barcode using CODE128 (supports alphanumeric, most compatible)
+      // If CODE128 fails, printer will ignore, so we try CODE39 as fallback
+      try {
+        commands += this.barcode128(barcodeData);
+      } catch (e) {
+        console.warn('CODE128 failed, trying CODE39:', e);
+        // Fallback to CODE39 if CODE128 fails
+        commands += this.barcode39(barcodeData);
+      }
+      
+      // Feed line after barcode (required for some printers)
+      commands += this.LF;
+      commands += this.LF;
+      
+      // Additional spacing
+      commands += this.LF;
+    } else {
+      // Fallback if no barcode data
+      commands += this.textSize(1, 1);
+      commands += '[BARCODE TIDAK TERSEDIA]' + this.LF;
+      commands += this.LF;
+    }
+
+    // Footer
+    commands += this.line();
+    commands += this.LF;
+    commands += this.align('center');
+    commands += 'Terima Kasih' + this.LF;
     commands += this.LF;
     commands += this.LF;
     
     // Feed paper before cut (to ensure proper position)
-    commands += this.LF;
     commands += this.LF;
     commands += this.LF;
 
