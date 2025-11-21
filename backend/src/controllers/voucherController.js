@@ -153,6 +153,8 @@ class VoucherController {
           status: voucher.status,
           issue_date: voucher.issue_date,
           valid_until: voucher.valid_until,
+          employee_name: voucher.employee_name || voucher.employee_name_full,
+          employee_id: voucher.employee_id,
           can_redeem: true
         }
       });
@@ -282,6 +284,29 @@ class VoucherController {
       res.json({
         success: true,
         data: vouchers
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /api/vouchers/scan-history?date=YYYY-MM-DD&status=all|valid|invalid (for kitchen scan history)
+  static async getScanHistory(req, res, next) {
+    try {
+      const { date, status } = req.query;
+
+      if (!date) {
+        return res.status(400).json({
+          success: false,
+          message: 'Parameter date harus diisi (format: YYYY-MM-DD)'
+        });
+      }
+
+      const history = await VoucherModel.getScanHistory(date, status || 'all');
+
+      res.json({
+        success: true,
+        data: history
       });
     } catch (error) {
       next(error);

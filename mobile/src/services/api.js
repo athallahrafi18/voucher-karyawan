@@ -147,6 +147,15 @@ export const voucherAPI = {
     const response = await api.get(buildUrl('/vouchers/details'), { params });
     return response.data;
   },
+
+  // Get scan history (for kitchen scan history screen)
+  getScanHistory: async (date, status = 'all') => {
+    const params = { date };
+    if (status && status !== 'All') params.status = status.toLowerCase();
+    
+    const response = await api.get(buildUrl('/vouchers/scan-history'), { params });
+    return response.data;
+  },
 };
 
 // Print API

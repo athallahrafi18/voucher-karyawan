@@ -297,6 +297,62 @@ class VoucherModel {
     
     return result.rows;
   }
+
+  // Get scan history (vouchers that have been scanned/redeemed on a specific date)
+  // This shows vouchers that were redeemed on the selected date (valid scans)
+  // Note: Invalid scans (expired/not found) are not tracked in database
+  static async getScanHistory(date, status = null) {
+    const client = await pool.connect();
+    try {
+      // Format date to YYYY-MM-DD
+      const dateStr = date instanceof Date 
+        ? date.toISOString().split('T')[0]
+        : date;
+
+      let query = `
+        SELECT 
+          barcode,
+          voucher_number,
+          status,
+          redeemed_at,
+          redeemed_by,
+          tenant_used,
+          valid_until,
+          issue_date,
+          created_at
+        FROM vouchers
+        WHERE DATE(redeemed_at) = $1 AND status = 'redeemed'
+      `;
+
+      const params = [dateStr];
+
+      // Note: We only track redeemed vouchers (valid scans)
+      // Invalid scans are not stored in database, so we can't show them
+      // Status filter is not needed here since we only show redeemed vouchers
+
+      query += ` ORDER BY redeemed_at DESC`;
+
+      const result = await client.query(query, params);
+      return result.rows.map(row => ({
+        barcode: row.barcode,
+        voucher_number: row.voucher_number,
+        status: 'valid', // All redeemed vouchers are valid
+        timestamp: row.redeemed_at,
+        redeemed_at: row.redeemed_at,
+        redeemed_by: row.redeemed_by,
+        tenant_used: row.tenant_used,
+        staffName: row.redeemed_by,
+        tenant: row.tenant_used,
+        valid_until: row.valid_until,
+        issue_date: row.issue_date,
+      }));
+    } catch (error) {
+      console.error('Error getting scan history:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = VoucherModel;

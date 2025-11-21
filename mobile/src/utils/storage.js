@@ -122,7 +122,7 @@ export const getPrinterSettings = async () => {
     return {
       printer_ip: '192.168.110.10',
       printer_port: 9100,
-      paper_size: '58', // Default 58mm
+      paper_size: '80', // Default 58mm
     };
   } catch (error) {
     console.error('Error getting printer settings:', error);

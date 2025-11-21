@@ -20,5 +20,8 @@ router.get('/print', VoucherController.getVouchersForPrint);
 // GET /api/vouchers/details (for report screen with details)
 router.get('/details', VoucherController.getVoucherDetails);
 
+// GET /api/vouchers/scan-history (for kitchen scan history)
+router.get('/scan-history', VoucherController.getScanHistory);
+
 module.exports = router;
 

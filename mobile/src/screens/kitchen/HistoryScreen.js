@@ -6,11 +6,12 @@ import {
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { getScanHistory } from '../../utils/storage';
+import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatDateTime, formatDate } from '../../utils/formatters';
 import { isTablet, getFontSize } from '../../utils/device';
@@ -23,16 +24,44 @@ export default function HistoryScreen() {
   const [history, setHistory] = useState([]);
   const [filter, setFilter] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     loadHistory();
-  }, []);
+  }, [selectedDate, filter]);
 
   const loadHistory = async () => {
-    const data = await getScanHistory();
-    setHistory(data);
+    try {
+      setLoading(true);
+      const dateStr = formatDate(selectedDate);
+      // Backend only returns redeemed vouchers (valid scans)
+      // Invalid scans are not tracked in database
+      const response = await voucherAPI.getScanHistory(dateStr, 'all');
+      
+      if (response.success) {
+        let historyData = response.data || [];
+        
+        // Filter by status on frontend (since backend only returns redeemed vouchers)
+        if (filter === 'Valid') {
+          historyData = historyData.filter(item => item.status === 'valid');
+        } else if (filter === 'Invalid') {
+          // Invalid scans are not stored in database, so this will be empty
+          historyData = [];
+        }
+        // 'All' shows all redeemed vouchers
+        
+        setHistory(historyData);
+      } else {
+        setHistory([]);
+      }
+    } catch (error) {
+      console.error('Error loading scan history:', error);
+      setHistory([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onRefresh = async () => {
@@ -41,27 +70,8 @@ export default function HistoryScreen() {
     setRefreshing(false);
   };
 
-  const filteredHistory = history.filter((item) => {
-    // Filter by status
-    let statusMatch = true;
-    if (filter === 'Valid') {
-      statusMatch = item.status === 'valid';
-    } else if (filter === 'Invalid') {
-      statusMatch = item.status !== 'valid';
-    }
-    
-    // Filter by date
-    if (!statusMatch) return false;
-    
-    // Compare dates (ignore time)
-    const itemDate = new Date(item.timestamp);
-    itemDate.setHours(0, 0, 0, 0);
-    
-    const filterDate = new Date(selectedDate);
-    filterDate.setHours(0, 0, 0, 0);
-    
-    return itemDate.getTime() === filterDate.getTime();
-  });
+  // History is already filtered by backend, no need to filter again
+  const filteredHistory = history;
 
   const renderHistoryItem = ({ item }) => (
     <Card style={styles.card}>
@@ -174,32 +184,41 @@ export default function HistoryScreen() {
       )}
 
       {/* History List */}
-      <FlatList
-        data={filteredHistory}
-        renderItem={renderHistoryItem}
-        keyExtractor={(item, index) => `${item.barcode}-${index}`}
-        contentContainerStyle={
-          filteredHistory.length === 0 ? styles.emptyContainer : styles.listContent
-        }
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          <Card style={styles.emptyCard}>
-            <Card.Content>
-              <MaterialCommunityIcons
-                name="history"
-                size={isTablet() ? 64 : 48}
-                color={theme.colors.textSecondary}
-                style={styles.emptyIcon}
-              />
-              <Text style={[styles.emptyText, { fontSize: getFontSize(16) }]}>
-                Belum ada riwayat scan pada tanggal {formatDate(selectedDate)}
-              </Text>
-            </Card.Content>
-          </Card>
-        }
-      />
+      {loading && history.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.loadingText, { fontSize: getFontSize(14) }]}>
+            Memuat riwayat scan...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredHistory}
+          renderItem={renderHistoryItem}
+          keyExtractor={(item, index) => `${item.barcode}-${index}`}
+          contentContainerStyle={
+            filteredHistory.length === 0 ? styles.emptyContainer : styles.listContent
+          }
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <Card style={styles.emptyCard}>
+              <Card.Content>
+                <MaterialCommunityIcons
+                  name="history"
+                  size={isTablet() ? 64 : 48}
+                  color={theme.colors.textSecondary}
+                  style={styles.emptyIcon}
+                />
+                <Text style={[styles.emptyText, { fontSize: getFontSize(16) }]}>
+                  Belum ada riwayat scan pada tanggal {formatDate(selectedDate)}
+                </Text>
+              </Card.Content>
+            </Card>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -277,6 +296,16 @@ const styles = StyleSheet.create({
   emptyText: {
     color: theme.colors.textSecondary,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    color: theme.colors.textSecondary,
   },
   card: {
     marginBottom: theme.spacing.md,

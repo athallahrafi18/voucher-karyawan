@@ -270,20 +270,6 @@ export default function ReportScreen() {
           />
         )}
 
-        {/* Period Info */}
-        {report && (
-          <Card style={styles.periodCard}>
-            <Card.Content>
-              <Text style={[styles.periodText, { fontSize: getFontSize(14) }]}>
-                {useDateRange 
-                  ? `Periode: ${formatDate(startDate)} - ${formatDate(endDate)}`
-                  : `Tanggal: ${formatDate(startDate)}`}
-                {selectedStatus !== 'all' && ` | Status: ${STATUS_FILTERS.find(f => f.value === selectedStatus)?.label || selectedStatus}`}
-              </Text>
-            </Card.Content>
-          </Card>
-        )}
-
         {/* Summary Cards */}
         {loading && !report ? (
           <ActivityIndicator size="large" color={theme.colors.primary} style={styles.loader} />
@@ -339,6 +325,44 @@ export default function ReportScreen() {
                 </Card.Content>
               </Card>
             </View>
+
+            {/* Period Info - Below Summary Cards */}
+            <Card style={styles.periodCard}>
+              <Card.Content>
+                <View style={styles.periodContainer}>
+                  <View style={styles.periodRow}>
+                    <MaterialCommunityIcons
+                      name="calendar"
+                      size={isTablet() ? 20 : 18}
+                      color={theme.colors.primary}
+                    />
+                    <Text style={[styles.periodLabel, { fontSize: getFontSize(12) }]}>
+                      {useDateRange ? 'Periode' : 'Tanggal'}:
+                    </Text>
+                    <Text style={[styles.periodValue, { fontSize: getFontSize(14) }]}>
+                      {useDateRange 
+                        ? `${formatDate(startDate)} - ${formatDate(endDate)}`
+                        : formatDate(startDate)}
+                    </Text>
+                  </View>
+                  {selectedStatus !== 'all' && (
+                    <View style={styles.periodRow}>
+                      <MaterialCommunityIcons
+                        name="filter"
+                        size={isTablet() ? 20 : 18}
+                        color={theme.colors.primary}
+                      />
+                      <Text style={[styles.periodLabel, { fontSize: getFontSize(12) }]}>
+                        Status:
+                      </Text>
+                      <Text style={[styles.periodValue, { fontSize: getFontSize(14) }]}>
+                        {STATUS_FILTERS.find(f => f.value === selectedStatus)?.label || selectedStatus}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </Card.Content>
+            </Card>
 
             {/* Redemption Rate Progress */}
             <Card style={styles.progressCard}>
@@ -509,14 +533,13 @@ const styles = StyleSheet.create({
   },
   statusButtons: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: theme.spacing.sm,
   },
   statusButton: {
     flex: 1,
-    minWidth: '30%',
     paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
     borderRadius: theme.borderRadius.sm,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
@@ -631,14 +654,25 @@ const styles = StyleSheet.create({
   },
   periodCard: {
     margin: theme.spacing.md,
-    marginTop: 0,
+    marginTop: theme.spacing.sm,
     elevation: 1,
-    backgroundColor: theme.colors.primary + '10',
+    backgroundColor: theme.colors.surface,
   },
-  periodText: {
+  periodContainer: {
+    gap: theme.spacing.sm,
+  },
+  periodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  periodLabel: {
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  periodValue: {
     color: theme.colors.text,
     fontWeight: '600',
-    textAlign: 'center',
   },
 });
 
