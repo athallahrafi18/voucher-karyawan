@@ -7,6 +7,7 @@ Backend API untuk sistem voucher karyawan Rakan Kuphi.
 - Node.js + Express
 - PostgreSQL
 - CORS enabled untuk React Native
+- Production-ready logging system
 
 ## Setup
 

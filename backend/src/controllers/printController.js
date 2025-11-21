@@ -1,6 +1,8 @@
 const net = require('net');
 const EscPosGenerator = require('../utils/escPosGenerator');
 const VoucherModel = require('../models/voucherModel');
+const logger = require('../utils/logger');
+const Validators = require('../utils/validators');
 
 class PrintController {
   // POST /api/print/thermal
@@ -8,7 +10,7 @@ class PrintController {
     try {
       const { vouchers, printer_ip, printer_port } = req.body;
 
-      // Validation
+      // Validate vouchers array
       if (!vouchers || !Array.isArray(vouchers) || vouchers.length === 0) {
         return res.status(400).json({
           success: false,
@@ -16,10 +18,28 @@ class PrintController {
         });
       }
 
-      if (!printer_ip || !printer_port) {
+      if (vouchers.length > 100) {
         return res.status(400).json({
           success: false,
-          message: 'printer_ip dan printer_port harus diisi'
+          message: 'Maksimal 100 voucher per batch'
+        });
+      }
+
+      // Validate printer IP
+      const ipValidation = Validators.validateIP(printer_ip);
+      if (!ipValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: ipValidation.error
+        });
+      }
+
+      // Validate printer port
+      const portValidation = Validators.validatePort(printer_port);
+      if (!portValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: portValidation.error
         });
       }
 
@@ -35,8 +55,8 @@ class PrintController {
         
         // Send to printer via TCP socket
         await PrintController.sendToPrinter(
-          printer_ip,
-          parseInt(printer_port),
+          ipValidation.ip,
+          portValidation.port,
           printData
         );
         
@@ -68,12 +88,12 @@ class PrintController {
       socket.setTimeout(10000); // 10 seconds
 
       socket.connect(port, ip, () => {
-        console.log(` printer Connected to printer ${ip}:${port}`);
+        logger.debug(`Connected to printer ${ip}:${port}`);
         socket.write(data);
       });
 
       socket.on('data', (data) => {
-        console.log('📄 Printer response:', data.toString());
+        logger.debug('Printer response received');
         if (!isResolved) {
           isResolved = true;
           socket.end();
@@ -82,7 +102,7 @@ class PrintController {
       });
 
       socket.on('close', () => {
-        console.log('🔌 Printer connection closed');
+        logger.debug('Printer connection closed');
         if (!isResolved) {
           isResolved = true;
           resolve(data.length);
@@ -90,7 +110,7 @@ class PrintController {
       });
 
       socket.on('error', (error) => {
-        console.error('❌ Printer error:', error);
+        logger.error('Printer error:', error.message);
         if (!isResolved) {
           isResolved = true;
           reject(new Error(`Failed to connect to printer: ${error.message}`));
@@ -98,7 +118,7 @@ class PrintController {
       });
 
       socket.on('timeout', () => {
-        console.error('⏱️ Printer connection timeout');
+        logger.error('Printer connection timeout');
         socket.destroy();
         if (!isResolved) {
           isResolved = true;

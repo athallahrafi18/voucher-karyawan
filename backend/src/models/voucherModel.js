@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const logger = require('../utils/logger');
 
 class VoucherModel {
   // Generate random voucher code (like Grab: 8 characters alphanumeric)
@@ -125,19 +126,34 @@ class VoucherModel {
     // Voucher hanya berlaku untuk hari issue_date saja
     // Compare dates only (not time) - voucher valid only on issue_date
     // Use PostgreSQL CURRENT_DATE to get local date (avoid timezone issues)
+    // PostgreSQL DATE type is returned as string in YYYY-MM-DD format
+    
+    // Get issue_date value - PostgreSQL returns DATE as string YYYY-MM-DD
+    const issueDateValue = voucher.issue_date;
+    
+    // Use SQL to compare dates directly (most reliable)
+    // Use timezone Asia/Jakarta (WIB) to ensure correct date comparison
+    // This ensures CURRENT_DATE matches local time, not UTC
     const dateCheckResult = await pool.query(
       `SELECT 
-        CASE WHEN CURRENT_DATE != $1::date THEN true ELSE false END as is_expired
+        (CURRENT_DATE AT TIME ZONE 'Asia/Jakarta')::date::text as today,
+        $1::date::text as issue_date,
+        ((CURRENT_DATE AT TIME ZONE 'Asia/Jakarta')::date = $1::date) as is_valid,
+        ((CURRENT_DATE AT TIME ZONE 'Asia/Jakarta')::date != $1::date) as is_expired
       `,
-      [voucher.issue_date]
+      [issueDateValue]
     );
     
-    const isExpired = dateCheckResult.rows[0]?.is_expired || false;
+    const checkResult = dateCheckResult.rows[0];
+    const isExpired = checkResult?.is_expired === true;
+    const isValid = checkResult?.is_valid === true;
     
     // Voucher expires if today is NOT the same as issue_date
     // If issue_date is 2025-11-21, voucher is valid ONLY on 2025-11-21
     // Voucher expires on 2025-11-22 (next day) or any other day
+    // Only auto-expire if status is 'active' and dates don't match
     if (voucher.status === 'active' && isExpired) {
+      logger.debug('Auto-expiring voucher:', voucher.barcode, 'today:', checkResult?.today, 'issue_date:', checkResult?.issue_date);
       await pool.query(
         'UPDATE vouchers SET status = $1, updated_at = NOW() WHERE id = $2',
         ['expired', voucher.id]
@@ -180,19 +196,33 @@ class VoucherModel {
       
       // Step 6: Validasi - Cek tanggal berlaku (voucher hanya berlaku untuk hari issue_date)
       // Use PostgreSQL CURRENT_DATE to get local date (avoid timezone issues)
+      // PostgreSQL DATE type is returned as string in YYYY-MM-DD format
+      
+      // Get issue_date value - PostgreSQL returns DATE as string YYYY-MM-DD
+      const issueDateValue = voucher.issue_date;
+      
+      // Use SQL to compare dates directly (most reliable)
+      // Use timezone Asia/Jakarta (WIB) to ensure correct date comparison
+      // This ensures CURRENT_DATE matches local time, not UTC
       const dateCheckResult = await client.query(
         `SELECT 
-          CASE WHEN CURRENT_DATE != $1::date THEN true ELSE false END as is_expired
+          (CURRENT_DATE AT TIME ZONE 'Asia/Jakarta')::date::text as today,
+          $1::date::text as issue_date,
+          ((CURRENT_DATE AT TIME ZONE 'Asia/Jakarta')::date = $1::date) as is_valid,
+          ((CURRENT_DATE AT TIME ZONE 'Asia/Jakarta')::date != $1::date) as is_expired
         `,
-        [voucher.issue_date]
+        [issueDateValue]
       );
       
-      const isExpired = dateCheckResult.rows[0]?.is_expired || false;
+      const checkResult = dateCheckResult.rows[0];
+      const isExpired = checkResult?.is_expired === true;
+      const isValid = checkResult?.is_valid === true;
       
       // Voucher expires if today is NOT the same as issue_date
       // If issue_date is 2025-11-21, voucher is valid ONLY on 2025-11-21
       // Voucher expires on 2025-11-22 (next day) or any other day
       if (isExpired) {
+        logger.debug('Redeem blocked - voucher expired:', voucher.barcode, 'today:', checkResult?.today, 'issue_date:', checkResult?.issue_date);
         await client.query(
           'UPDATE vouchers SET status = $1, updated_at = NOW() WHERE id = $2',
           ['expired', voucher.id]
@@ -395,7 +425,7 @@ class VoucherModel {
         issue_date: row.issue_date,
       }));
     } catch (error) {
-      console.error('Error getting scan history:', error);
+      logger.error('Error getting scan history:', error);
       throw error;
     } finally {
       client.release();

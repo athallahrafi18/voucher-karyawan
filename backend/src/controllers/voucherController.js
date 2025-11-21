@@ -1,4 +1,5 @@
 const VoucherModel = require('../models/voucherModel');
+const Validators = require('../utils/validators');
 
 class VoucherController {
   // POST /api/vouchers/generate
@@ -7,44 +8,21 @@ class VoucherController {
       const { employee_ids, issue_date } = req.body;
       const EmployeeModel = require('../models/employeeModel');
 
-      // Validation
-      if (!employee_ids || !Array.isArray(employee_ids) || employee_ids.length === 0) {
+      // Validate employee IDs
+      const employeeIdsValidation = Validators.validateEmployeeIds(employee_ids);
+      if (!employeeIdsValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'employee_ids harus berupa array dan tidak boleh kosong'
+          message: employeeIdsValidation.error
         });
       }
 
-      if (employee_ids.length > 100) {
+      // Validate date
+      const dateValidation = Validators.validateDate(issue_date);
+      if (!dateValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'Maksimal 100 karyawan per batch'
-        });
-      }
-
-      // Filter out invalid IDs
-      const validIds = employee_ids.filter(id => id && Number.isInteger(Number(id)));
-      
-      if (validIds.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Minimal 1 employee_id harus diisi'
-        });
-      }
-
-      if (!issue_date) {
-        return res.status(400).json({
-          success: false,
-          message: 'issue_date harus diisi'
-        });
-      }
-
-      // Validate date format
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(issue_date)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Format tanggal harus YYYY-MM-DD'
+          message: dateValidation.error
         });
       }
 
@@ -52,7 +30,7 @@ class VoucherController {
       const employeesWithVoucher = [];
       const employeesWithoutVoucher = [];
       
-      for (const employeeId of validIds) {
+      for (const employeeId of employeeIdsValidation.ids) {
         const hasVoucher = await EmployeeModel.hasVoucherToday(employeeId, issue_date);
         if (hasVoucher) {
           const employee = await EmployeeModel.findById(employeeId);
@@ -63,7 +41,7 @@ class VoucherController {
       }
 
       // Generate vouchers only for employees without voucher today
-      const vouchers = await VoucherModel.generateVouchers(employeesWithoutVoucher, issue_date);
+      const vouchers = await VoucherModel.generateVouchers(employeesWithoutVoucher, dateValidation.date.toISOString().split('T')[0]);
 
       const message = vouchers.length > 0 
         ? `${vouchers.length} voucher berhasil dibuat`
@@ -93,15 +71,17 @@ class VoucherController {
     try {
       const { barcode } = req.params;
 
-      if (!barcode) {
+      // Validate barcode
+      const barcodeValidation = Validators.validateBarcode(barcode);
+      if (!barcodeValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'Barcode harus diisi'
+          message: barcodeValidation.error
         });
       }
 
       // Step 1: Cek apakah voucher ada di database (by barcode or voucher_code)
-      const voucher = await VoucherModel.findByBarcode(barcode);
+      const voucher = await VoucherModel.findByBarcode(barcodeValidation.barcode);
 
       // Step 2: Validasi - Voucher harus ada di database
       if (!voucher) {
@@ -195,22 +175,34 @@ class VoucherController {
       const { barcode } = req.params;
       const { redeemed_by, tenant_used } = req.body;
 
-      // Validation
-      if (!barcode) {
+      // Validate barcode
+      const barcodeValidation = Validators.validateBarcode(barcode);
+      if (!barcodeValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'Barcode harus diisi'
+          message: barcodeValidation.error
         });
       }
 
-      if (!redeemed_by || !tenant_used) {
+      // Validate redeemed_by
+      const redeemedByValidation = Validators.validateString(redeemed_by, 'redeemed_by', { maxLength: 100 });
+      if (!redeemedByValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'redeemed_by dan tenant_used harus diisi'
+          message: redeemedByValidation.error
         });
       }
 
-      if (!['Martabak Rakan', 'Mie Aceh Rakan'].includes(tenant_used)) {
+      // Validate tenant_used
+      const tenantValidation = Validators.validateString(tenant_used, 'tenant_used', { maxLength: 100 });
+      if (!tenantValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: tenantValidation.error
+        });
+      }
+
+      if (!['Martabak Rakan', 'Mie Aceh Rakan'].includes(tenantValidation.value)) {
         return res.status(400).json({
           success: false,
           message: 'tenant_used harus "Martabak Rakan" atau "Mie Aceh Rakan"'
@@ -218,7 +210,7 @@ class VoucherController {
       }
 
       // Redeem voucher
-      const voucher = await VoucherModel.redeem(barcode, redeemed_by, tenant_used);
+      const voucher = await VoucherModel.redeem(barcodeValidation.barcode, redeemedByValidation.value, tenantValidation.value);
 
       res.json({
         success: true,
@@ -250,15 +242,39 @@ class VoucherController {
     try {
       const { date, end_date, status } = req.query;
 
-      if (!date) {
+      // Validate date
+      const dateValidation = Validators.validateDate(date);
+      if (!dateValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'Parameter date harus diisi (format: YYYY-MM-DD)'
+          message: dateValidation.error
+        });
+      }
+
+      // Validate end_date if provided
+      let endDateValidated = null;
+      if (end_date) {
+        const endDateValidation = Validators.validateDate(end_date);
+        if (!endDateValidation.valid) {
+          return res.status(400).json({
+            success: false,
+            message: `end_date: ${endDateValidation.error}`
+          });
+        }
+        endDateValidated = end_date;
+      }
+
+      // Validate status if provided
+      const validStatuses = ['all', 'active', 'redeemed', 'expired'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `status harus salah satu dari: ${validStatuses.join(', ')}`
         });
       }
 
       // If end_date is provided, use range. Otherwise, use single date
-      const report = await VoucherModel.getDailyReport(date, end_date || null, status || null);
+      const report = await VoucherModel.getDailyReport(date, endDateValidated, status || null);
 
       res.json({
         success: true,
@@ -274,10 +290,12 @@ class VoucherController {
     try {
       const { date } = req.query;
 
-      if (!date) {
+      // Validate date
+      const dateValidation = Validators.validateDate(date);
+      if (!dateValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'Parameter date harus diisi (format: YYYY-MM-DD)'
+          message: dateValidation.error
         });
       }
 
@@ -297,15 +315,39 @@ class VoucherController {
     try {
       const { date, end_date, status } = req.query;
 
-      if (!date) {
+      // Validate date
+      const dateValidation = Validators.validateDate(date);
+      if (!dateValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'Parameter date harus diisi (format: YYYY-MM-DD)'
+          message: dateValidation.error
+        });
+      }
+
+      // Validate end_date if provided
+      let endDateValidated = null;
+      if (end_date) {
+        const endDateValidation = Validators.validateDate(end_date);
+        if (!endDateValidation.valid) {
+          return res.status(400).json({
+            success: false,
+            message: `end_date: ${endDateValidation.error}`
+          });
+        }
+        endDateValidated = end_date;
+      }
+
+      // Validate status if provided
+      const validStatuses = ['all', 'active', 'redeemed', 'expired'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `status harus salah satu dari: ${validStatuses.join(', ')}`
         });
       }
 
       // If end_date is provided, use range. Otherwise, use single date
-      const vouchers = await VoucherModel.getVoucherDetails(date, end_date || null, status || null);
+      const vouchers = await VoucherModel.getVoucherDetails(date, endDateValidated, status || null);
 
       res.json({
         success: true,
@@ -321,10 +363,21 @@ class VoucherController {
     try {
       const { date, status } = req.query;
 
-      if (!date) {
+      // Validate date
+      const dateValidation = Validators.validateDate(date);
+      if (!dateValidation.valid) {
         return res.status(400).json({
           success: false,
-          message: 'Parameter date harus diisi (format: YYYY-MM-DD)'
+          message: dateValidation.error
+        });
+      }
+
+      // Validate status if provided
+      const validStatuses = ['all', 'valid', 'invalid'];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `status harus salah satu dari: ${validStatuses.join(', ')}`
         });
       }
 

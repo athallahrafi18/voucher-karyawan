@@ -1,29 +1,30 @@
 const { Pool } = require('pg');
 require('dotenv').config();
+const logger = require('../utils/logger');
 
 if (!process.env.DATABASE_URL) {
-  console.warn('⚠️  DATABASE_URL is not set - database features will not work');
+  logger.warn('DATABASE_URL is not set - database features will not work');
 }
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  // Connection pool settings - increased timeout for Railway
-  max: 20,
+  // Connection pool settings - optimized for production
+  max: process.env.NODE_ENV === 'production' ? 10 : 20, // Lower in production to save resources
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 30000, // Increased to 30 seconds for Railway
-  // Additional settings for Railway
+  connectionTimeoutMillis: 10000, // Reduced timeout for faster failure detection
+  // Additional settings
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
 });
 
 // Test connection
 pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL database');
+  logger.info('Connected to PostgreSQL database');
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Database connection error:', err);
+  logger.error('Database connection error:', err.message);
   // Don't exit process, let the app continue (might be temporary connection issue)
 });
 
@@ -38,21 +39,21 @@ pool.on('error', (err) => {
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`🔄 Attempting database connection (${attempt}/${maxRetries})...`);
+      logger.info(`Attempting database connection (${attempt}/${maxRetries})...`);
       const client = await pool.connect();
       await client.query('SELECT NOW()');
       client.release();
-      console.log('✅ Database connection test successful');
+      logger.info('Database connection test successful');
       return; // Success, exit function
     } catch (error) {
-      console.error(`❌ Database connection test failed (attempt ${attempt}/${maxRetries}):`, error.message);
+      logger.error(`Database connection test failed (attempt ${attempt}/${maxRetries}):`, error.message);
       
       if (attempt < maxRetries) {
-        console.log(`⏳ Retrying in ${retryDelay/1000} seconds...`);
+        logger.debug(`Retrying in ${retryDelay/1000} seconds...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       } else {
-        console.warn('⚠️  Server will continue but database features may not work');
-        console.warn('⚠️  Please check DATABASE_URL and ensure database service is running');
+        logger.warn('Server will continue but database features may not work');
+        logger.warn('Please check DATABASE_URL and ensure database service is running');
       }
     }
   }
