@@ -18,9 +18,20 @@ import { isTablet, getFontSize } from '../../utils/device';
 import VoucherCard from '../../components/VoucherCard';
 import Navbar from '../../components/Navbar';
 
+const STATUS_FILTERS = [
+  { label: 'Semua Status', value: 'all' },
+  { label: 'Active', value: 'active' },
+  { label: 'Redeemed', value: 'redeemed' },
+  { label: 'Expired', value: 'expired' },
+];
+
 export default function ReportScreen() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [useDateRange, setUseDateRange] = useState(false); // Default: single date (hari ini)
+  const [startDate, setStartDate] = useState(new Date()); // Default: hari ini
+  const [endDate, setEndDate] = useState(new Date()); // Default: hari ini
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState('all'); // Default: Semua Status
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [report, setReport] = useState(null);
@@ -28,7 +39,7 @@ export default function ReportScreen() {
 
   useEffect(() => {
     fetchReport();
-  }, []);
+  }, [startDate, endDate, selectedStatus, useDateRange]);
 
   const formatDateForAPI = (date) => {
     const year = date.getFullYear();
@@ -40,11 +51,12 @@ export default function ReportScreen() {
   const fetchReport = async () => {
     try {
       setLoading(true);
-      const date = formatDateForAPI(selectedDate);
+      const startDateStr = formatDateForAPI(startDate);
+      const endDateStr = useDateRange ? formatDateForAPI(endDate) : null;
       
       const [reportResponse, detailsResponse] = await Promise.all([
-        voucherAPI.getDailyReport(date),
-        voucherAPI.getVoucherDetails(date),
+        voucherAPI.getDailyReport(startDateStr, endDateStr, selectedStatus),
+        voucherAPI.getVoucherDetails(startDateStr, endDateStr, selectedStatus),
       ]);
 
       if (reportResponse.success) {
@@ -69,14 +81,25 @@ export default function ReportScreen() {
     setRefreshing(false);
   };
 
-  const handleDateChange = (event, date) => {
-    setShowDatePicker(false);
+  const handleStartDateChange = (event, date) => {
+    setShowStartDatePicker(false);
     if (date) {
-      setSelectedDate(date);
-      // Fetch new data when date changes
-      setTimeout(() => {
-        fetchReport();
-      }, 100);
+      setStartDate(date);
+      // If using single date mode, also update endDate
+      if (!useDateRange) {
+        setEndDate(date);
+      }
+    }
+  };
+
+  const handleEndDateChange = (event, date) => {
+    setShowEndDatePicker(false);
+    if (date) {
+      setEndDate(date);
+      // Ensure endDate is not before startDate
+      if (date < startDate) {
+        setStartDate(date);
+      }
     }
   };
 
@@ -98,32 +121,167 @@ export default function ReportScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Date Picker */}
-        <Card style={styles.dateCard}>
+        {/* Filter Section */}
+        <Card style={styles.filterCard}>
           <Card.Content>
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <MaterialCommunityIcons
-                name="calendar"
-                size={isTablet() ? 24 : 20}
-                color={theme.colors.primary}
-              />
-              <Text style={[styles.dateText, { fontSize: getFontSize(18) }]}>
-                {formatDate(formatDateForAPI(selectedDate))}
+            {/* Date Range Toggle */}
+            <View style={styles.toggleContainer}>
+              <Text style={[styles.filterLabel, { fontSize: getFontSize(14) }]}>
+                Mode Filter:
               </Text>
-            </TouchableOpacity>
+              <View style={styles.toggleButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    !useDateRange && styles.toggleButtonActive,
+                  ]}
+                  onPress={() => {
+                    setUseDateRange(false);
+                    setEndDate(startDate); // Reset endDate to startDate
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.toggleButtonText,
+                      { fontSize: getFontSize(14) },
+                      !useDateRange && styles.toggleButtonTextActive,
+                    ]}
+                  >
+                    Tanggal Tunggal
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    useDateRange && styles.toggleButtonActive,
+                  ]}
+                  onPress={() => setUseDateRange(true)}
+                >
+                  <Text
+                    style={[
+                      styles.toggleButtonText,
+                      { fontSize: getFontSize(14) },
+                      useDateRange && styles.toggleButtonTextActive,
+                    ]}
+                  >
+                    Range Tanggal
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Date Picker(s) */}
+            <View style={styles.dateContainer}>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowStartDatePicker(true)}
+              >
+                <MaterialCommunityIcons
+                  name="calendar"
+                  size={isTablet() ? 24 : 20}
+                  color={theme.colors.primary}
+                />
+                <View style={styles.dateInfo}>
+                  <Text style={[styles.dateLabel, { fontSize: getFontSize(12) }]}>
+                    {useDateRange ? 'Dari Tanggal' : 'Tanggal'}
+                  </Text>
+                  <Text style={[styles.dateText, { fontSize: getFontSize(16) }]}>
+                    {formatDate(startDate)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {useDateRange && (
+                <>
+                  <MaterialCommunityIcons
+                    name="arrow-right"
+                    size={isTablet() ? 24 : 20}
+                    color={theme.colors.textSecondary}
+                  />
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={() => setShowEndDatePicker(true)}
+                  >
+                    <MaterialCommunityIcons
+                      name="calendar"
+                      size={isTablet() ? 24 : 20}
+                      color={theme.colors.primary}
+                    />
+                    <View style={styles.dateInfo}>
+                      <Text style={[styles.dateLabel, { fontSize: getFontSize(12) }]}>
+                        Sampai Tanggal
+                      </Text>
+                      <Text style={[styles.dateText, { fontSize: getFontSize(16) }]}>
+                        {formatDate(endDate)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+
+            {/* Status Filter */}
+            <View style={styles.statusContainer}>
+              <Text style={[styles.filterLabel, { fontSize: getFontSize(14) }]}>
+                Status:
+              </Text>
+              <View style={styles.statusButtons}>
+                {STATUS_FILTERS.map((filter) => (
+                  <TouchableOpacity
+                    key={filter.value}
+                    style={[
+                      styles.statusButton,
+                      selectedStatus === filter.value && styles.statusButtonActive,
+                    ]}
+                    onPress={() => setSelectedStatus(filter.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusButtonText,
+                        { fontSize: getFontSize(14) },
+                        selectedStatus === filter.value && styles.statusButtonTextActive,
+                      ]}
+                    >
+                      {filter.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </Card.Content>
         </Card>
 
-        {showDatePicker && (
+        {/* Date Pickers */}
+        {showStartDatePicker && (
           <DateTimePicker
-            value={selectedDate}
+            value={startDate}
             mode="date"
             display="default"
-            onChange={handleDateChange}
+            onChange={handleStartDateChange}
           />
+        )}
+        {showEndDatePicker && (
+          <DateTimePicker
+            value={endDate}
+            mode="date"
+            display="default"
+            onChange={handleEndDateChange}
+            minimumDate={startDate}
+          />
+        )}
+
+        {/* Period Info */}
+        {report && (
+          <Card style={styles.periodCard}>
+            <Card.Content>
+              <Text style={[styles.periodText, { fontSize: getFontSize(14) }]}>
+                {useDateRange 
+                  ? `Periode: ${formatDate(startDate)} - ${formatDate(endDate)}`
+                  : `Tanggal: ${formatDate(startDate)}`}
+                {selectedStatus !== 'all' && ` | Status: ${STATUS_FILTERS.find(f => f.value === selectedStatus)?.label || selectedStatus}`}
+              </Text>
+            </Card.Content>
+          </Card>
         )}
 
         {/* Summary Cards */}
@@ -240,7 +398,9 @@ export default function ReportScreen() {
           <Card style={styles.emptyCard}>
             <Card.Content>
               <Text style={[styles.emptyText, { fontSize: getFontSize(16) }]}>
-                Belum ada data untuk tanggal ini
+                {useDateRange 
+                  ? `Belum ada data untuk periode ${formatDate(startDate)} - ${formatDate(endDate)}`
+                  : `Belum ada data untuk tanggal ${formatDate(startDate)}`}
               </Text>
             </Card.Content>
           </Card>
@@ -278,18 +438,101 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  dateCard: {
+  filterCard: {
     margin: theme.spacing.md,
     elevation: 2,
   },
-  dateButton: {
+  toggleContainer: {
+    marginBottom: theme.spacing.md,
+  },
+  filterLabel: {
+    color: theme.colors.text,
+    fontWeight: '600',
+    marginBottom: theme.spacing.sm,
+  },
+  toggleButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.textSecondary + '30',
+    alignItems: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  toggleButtonText: {
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  toggleButtonTextActive: {
+    color: '#fff',
+  },
+  dateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  dateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.textSecondary + '30',
+  },
+  dateInfo: {
+    flex: 1,
+  },
+  dateLabel: {
+    color: theme.colors.textSecondary,
+    marginBottom: 2,
   },
   dateText: {
     color: theme.colors.text,
     fontWeight: '600',
+  },
+  statusContainer: {
+    marginTop: theme.spacing.sm,
+  },
+  statusButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  statusButton: {
+    flex: 1,
+    minWidth: '30%',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.textSecondary + '30',
+    alignItems: 'center',
+  },
+  statusButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  statusButtonText: {
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+  },
+  statusButtonTextActive: {
+    color: '#fff',
   },
   loader: {
     marginVertical: theme.spacing.xl,
@@ -385,6 +628,17 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     textAlign: 'center',
     padding: theme.spacing.lg,
+  },
+  periodCard: {
+    margin: theme.spacing.md,
+    marginTop: 0,
+    elevation: 1,
+    backgroundColor: theme.colors.primary + '10',
+  },
+  periodText: {
+    color: theme.colors.text,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

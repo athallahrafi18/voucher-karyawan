@@ -7,10 +7,11 @@ export default function StatusBadge({ status, style }) {
   const getStatusConfig = (status) => {
     switch (status) {
       case 'active':
+      case 'valid':
         return {
           label: 'VALID',
-          color: theme.colors.success,
-          bgColor: theme.colors.success + '20',
+          color: theme.colors.success || '#10B981', // Green
+          bgColor: (theme.colors.success || '#10B981') + '20',
         };
       case 'redeemed':
         return {

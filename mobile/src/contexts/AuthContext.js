@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [userRole, setUserRole] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [staffName, setStaffName] = useState(null); // Store staff name for kitchen role
 
   // Check stored role on mount
   useEffect(() => {
@@ -17,9 +18,13 @@ export const AuthProvider = ({ children }) => {
   const checkStoredRole = async () => {
     try {
       const storedRole = await AsyncStorage.getItem('userRole');
+      const storedStaffName = await AsyncStorage.getItem('staffName');
       if (storedRole && Object.values(ROLES).includes(storedRole)) {
         setUserRole(storedRole);
         setIsAuthenticated(true);
+        if (storedStaffName) {
+          setStaffName(storedStaffName);
+        }
       }
     } catch (error) {
       console.error('Error checking stored role:', error);
@@ -28,7 +33,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (role) => {
+  const login = async (role, staffName = null) => {
     try {
       if (!Object.values(ROLES).includes(role)) {
         throw new Error('Invalid role');
@@ -36,6 +41,15 @@ export const AuthProvider = ({ children }) => {
       setUserRole(role);
       setIsAuthenticated(true);
       await AsyncStorage.setItem('userRole', role);
+      
+      // Store staff name if provided (for kitchen role)
+      if (staffName) {
+        setStaffName(staffName);
+        await AsyncStorage.setItem('staffName', staffName);
+      } else {
+        setStaffName(null);
+        await AsyncStorage.removeItem('staffName');
+      }
     } catch (error) {
       console.error('Error logging in:', error);
       throw error;
@@ -46,7 +60,9 @@ export const AuthProvider = ({ children }) => {
     try {
       setUserRole(null);
       setIsAuthenticated(false);
+      setStaffName(null);
       await AsyncStorage.removeItem('userRole');
+      await AsyncStorage.removeItem('staffName');
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -58,6 +74,7 @@ export const AuthProvider = ({ children }) => {
         userRole,
         isAuthenticated,
         isLoading,
+        staffName,
         login,
         logout,
       }}

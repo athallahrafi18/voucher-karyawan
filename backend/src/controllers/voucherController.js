@@ -217,10 +217,10 @@ class VoucherController {
     }
   }
 
-  // GET /api/vouchers/report/daily?date=YYYY-MM-DD
+  // GET /api/vouchers/report/daily?date=YYYY-MM-DD&end_date=YYYY-MM-DD&status=all|active|redeemed|expired
   static async getDailyReport(req, res, next) {
     try {
-      const { date } = req.query;
+      const { date, end_date, status } = req.query;
 
       if (!date) {
         return res.status(400).json({
@@ -229,7 +229,8 @@ class VoucherController {
         });
       }
 
-      const report = await VoucherModel.getDailyReport(date);
+      // If end_date is provided, use range. Otherwise, use single date
+      const report = await VoucherModel.getDailyReport(date, end_date || null, status || null);
 
       res.json({
         success: true,
@@ -263,10 +264,10 @@ class VoucherController {
     }
   }
 
-  // GET /api/vouchers/details?date=YYYY-MM-DD (for report screen)
+  // GET /api/vouchers/details?date=YYYY-MM-DD&end_date=YYYY-MM-DD&status=all|active|redeemed|expired (for report screen)
   static async getVoucherDetails(req, res, next) {
     try {
-      const { date } = req.query;
+      const { date, end_date, status } = req.query;
 
       if (!date) {
         return res.status(400).json({
@@ -275,7 +276,8 @@ class VoucherController {
         });
       }
 
-      const vouchers = await VoucherModel.getVoucherDetails(date);
+      // If end_date is provided, use range. Otherwise, use single date
+      const vouchers = await VoucherModel.getVoucherDetails(date, end_date || null, status || null);
 
       res.json({
         success: true,

@@ -120,11 +120,13 @@ export const voucherAPI = {
     return response.data;
   },
 
-  // Get daily report
-  getDailyReport: async (date) => {
-    const response = await api.get(buildUrl('/vouchers/report/daily'), {
-      params: { date },
-    });
+  // Get daily report (supports date range and status filter)
+  getDailyReport: async (startDate, endDate = null, status = null) => {
+    const params = { date: startDate };
+    if (endDate) params.end_date = endDate;
+    if (status && status !== 'all') params.status = status;
+    
+    const response = await api.get(buildUrl('/vouchers/report/daily'), { params });
     return response.data;
   },
 
@@ -136,11 +138,13 @@ export const voucherAPI = {
     return response.data;
   },
 
-  // Get voucher details
-  getVoucherDetails: async (date) => {
-    const response = await api.get(buildUrl('/vouchers/details'), {
-      params: { date },
-    });
+  // Get voucher details (supports date range and status filter)
+  getVoucherDetails: async (startDate, endDate = null, status = null) => {
+    const params = { date: startDate };
+    if (endDate) params.end_date = endDate;
+    if (status && status !== 'all') params.status = status;
+    
+    const response = await api.get(buildUrl('/vouchers/details'), { params });
     return response.data;
   },
 };

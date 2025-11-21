@@ -202,8 +202,21 @@ class VoucherModel {
     }
   }
 
-  // Get daily report
-  static async getDailyReport(date) {
+  // Get daily report (supports single date or date range, with optional status filter)
+  static async getDailyReport(startDate, endDate = null, status = null) {
+    // If endDate is not provided, use startDate (single date)
+    const endDateToUse = endDate || startDate;
+    
+    // Build WHERE clause
+    let whereClause = 'WHERE issue_date >= $1 AND issue_date <= $2';
+    const params = [startDate, endDateToUse];
+    
+    // Add status filter if provided
+    if (status && status !== 'all' && ['active', 'redeemed', 'expired'].includes(status)) {
+      whereClause += ' AND status = $3';
+      params.push(status);
+    }
+    
     const result = await pool.query(
       `SELECT 
         COUNT(*) FILTER (WHERE status = 'active') as total_unused,
@@ -213,8 +226,8 @@ class VoucherModel {
         COUNT(*) FILTER (WHERE tenant_used = 'Martabak Rakan') as martabak_count,
         COUNT(*) FILTER (WHERE tenant_used = 'Mie Aceh Rakan') as mie_aceh_count
        FROM vouchers 
-       WHERE issue_date = $1`,
-      [date]
+       ${whereClause}`,
+      params
     );
     
     const stats = result.rows[0];
@@ -225,7 +238,8 @@ class VoucherModel {
       : '0.0';
     
     return {
-      date,
+      start_date: startDate,
+      end_date: endDateToUse,
       total_generated: totalGenerated,
       total_redeemed: totalRedeemed,
       total_unused: parseInt(stats.total_unused) || 0,
@@ -251,8 +265,21 @@ class VoucherModel {
     return result.rows;
   }
 
-  // Get voucher details for report
-  static async getVoucherDetails(date) {
+  // Get voucher details for report (supports single date or date range, with optional status filter)
+  static async getVoucherDetails(startDate, endDate = null, status = null) {
+    // If endDate is not provided, use startDate (single date)
+    const endDateToUse = endDate || startDate;
+    
+    // Build WHERE clause
+    let whereClause = 'WHERE issue_date >= $1 AND issue_date <= $2';
+    const params = [startDate, endDateToUse];
+    
+    // Add status filter if provided
+    if (status && status !== 'all' && ['active', 'redeemed', 'expired'].includes(status)) {
+      whereClause += ' AND status = $3';
+      params.push(status);
+    }
+    
     const result = await pool.query(
       `SELECT 
         barcode, 
@@ -263,9 +290,9 @@ class VoucherModel {
         tenant_used,
         issue_date
        FROM vouchers 
-       WHERE issue_date = $1
-       ORDER BY voucher_number ASC`,
-      [date]
+       ${whereClause}
+       ORDER BY issue_date ASC, voucher_number ASC`,
+      params
     );
     
     return result.rows;

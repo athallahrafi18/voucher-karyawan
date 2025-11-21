@@ -9,9 +9,10 @@ import {
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { getScanHistory } from '../../utils/storage';
 import { theme } from '../../config/theme';
-import { formatDateTime } from '../../utils/formatters';
+import { formatDateTime, formatDate } from '../../utils/formatters';
 import { isTablet, getFontSize } from '../../utils/device';
 import StatusBadge from '../../components/StatusBadge';
 import Navbar from '../../components/Navbar';
@@ -22,6 +23,8 @@ export default function HistoryScreen() {
   const [history, setHistory] = useState([]);
   const [filter, setFilter] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     loadHistory();
@@ -39,10 +42,25 @@ export default function HistoryScreen() {
   };
 
   const filteredHistory = history.filter((item) => {
-    if (filter === 'All') return true;
-    if (filter === 'Valid') return item.status === 'valid';
-    if (filter === 'Invalid') return item.status !== 'valid';
-    return true;
+    // Filter by status
+    let statusMatch = true;
+    if (filter === 'Valid') {
+      statusMatch = item.status === 'valid';
+    } else if (filter === 'Invalid') {
+      statusMatch = item.status !== 'valid';
+    }
+    
+    // Filter by date
+    if (!statusMatch) return false;
+    
+    // Compare dates (ignore time)
+    const itemDate = new Date(item.timestamp);
+    itemDate.setHours(0, 0, 0, 0);
+    
+    const filterDate = new Date(selectedDate);
+    filterDate.setHours(0, 0, 0, 0);
+    
+    return itemDate.getTime() === filterDate.getTime();
   });
 
   const renderHistoryItem = ({ item }) => (
@@ -94,6 +112,28 @@ export default function HistoryScreen() {
         icon="history"
         backgroundColor={theme.colors.secondary}
       />
+      {/* Date Filter */}
+      <View style={styles.dateFilterContainer}>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <MaterialCommunityIcons
+            name="calendar"
+            size={isTablet() ? 24 : 20}
+            color={theme.colors.primary}
+          />
+          <Text style={[styles.dateText, { fontSize: getFontSize(14) }]}>
+            {formatDate(selectedDate)}
+          </Text>
+          <MaterialCommunityIcons
+            name="chevron-down"
+            size={isTablet() ? 20 : 16}
+            color={theme.colors.textSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+
       {/* Filter Buttons */}
       <View style={styles.filterContainer}>
         {FILTERS.map((filterOption) => (
@@ -118,6 +158,21 @@ export default function HistoryScreen() {
         ))}
       </View>
 
+      {/* Date Picker */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={(event, date) => {
+            setShowDatePicker(false);
+            if (date) {
+              setSelectedDate(date);
+            }
+          }}
+        />
+      )}
+
       {/* History List */}
       <FlatList
         data={filteredHistory}
@@ -139,7 +194,7 @@ export default function HistoryScreen() {
                 style={styles.emptyIcon}
               />
               <Text style={[styles.emptyText, { fontSize: getFontSize(16) }]}>
-                Belum ada riwayat scan hari ini
+                Belum ada riwayat scan pada tanggal {formatDate(selectedDate)}
               </Text>
             </Card.Content>
           </Card>
@@ -154,9 +209,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  dateFilterContainer: {
+    padding: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.textSecondary + '30',
+    gap: theme.spacing.sm,
+  },
+  dateText: {
+    color: theme.colors.text,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
   filterContainer: {
     flexDirection: 'row',
     padding: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
     gap: theme.spacing.sm,
   },
   filterButton: {

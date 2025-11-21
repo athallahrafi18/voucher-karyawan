@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { voucherAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../config/theme';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
 import { isTablet, getFontSize } from '../../utils/device';
@@ -26,11 +27,12 @@ export default function ValidationScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { barcode } = route.params || {};
+  const { staffName: authStaffName } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [redeeming, setRedeeming] = useState(false);
   const [voucher, setVoucher] = useState(null);
-  const [staffName, setStaffName] = useState('');
+  const [staffName, setStaffName] = useState(authStaffName || ''); // Auto-fill from auth context
   const [selectedTenant, setSelectedTenant] = useState(TENANTS[0]);
 
   useEffect(() => {
@@ -253,9 +255,15 @@ export default function ValidationScreen() {
                 style={[styles.input, { height: isTablet() ? 56 : 48, fontSize: getFontSize(16) }]}
                 value={staffName}
                 onChangeText={setStaffName}
-                placeholder="Masukkan nama staff"
+                placeholder="Nama staff akan otomatis terisi"
                 placeholderTextColor={theme.colors.textSecondary}
+                editable={!authStaffName} // Disable if already set from login
               />
+              {authStaffName && (
+                <Text style={[styles.helperText, { fontSize: getFontSize(12) }]}>
+                  Nama staff otomatis dari login
+                </Text>
+              )}
 
               <Text style={[styles.formLabel, { fontSize: getFontSize(14), marginTop: theme.spacing.md }]}>
                 Tenant
@@ -389,6 +397,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.textSecondary + '30',
     color: theme.colors.text,
+  },
+  helperText: {
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    fontStyle: 'italic',
   },
   pickerContainer: {
     backgroundColor: theme.colors.surface,
