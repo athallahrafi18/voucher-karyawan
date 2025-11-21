@@ -51,7 +51,10 @@ class VoucherModel {
       await client.query('BEGIN');
       
       const vouchers = [];
-      const validUntil = issueDate; // Voucher hanya berlaku 1 hari
+      // Voucher berlaku sampai akhir hari yang sama (23:59:59)
+      // Set valid_until ke issue_date (akan dibandingkan sebagai DATE, bukan DATETIME)
+      // Di findByBarcode, kita akan membandingkan hanya tanggalnya saja
+      const validUntil = issueDate; // Voucher hanya berlaku 1 hari (sampai akhir hari)
       
       // Get the next sequence number for this date
       const sequenceResult = await client.query(
@@ -119,7 +122,17 @@ class VoucherModel {
     const voucher = result.rows[0];
     
     // Auto-expire voucher yang lewat tanggal
-    if (voucher.status === 'active' && new Date(voucher.valid_until) < new Date()) {
+    // Compare dates only (not time) - voucher valid until end of valid_until date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of today
+    
+    const validUntilDate = new Date(voucher.valid_until);
+    validUntilDate.setHours(0, 0, 0, 0); // Set to start of valid_until date
+    
+    // Voucher expires if today is AFTER valid_until date
+    // If valid_until is 2025-01-17, voucher is valid on 2025-01-17 (all day)
+    // Voucher expires on 2025-01-18 (next day)
+    if (voucher.status === 'active' && today > validUntilDate) {
       await pool.query(
         'UPDATE vouchers SET status = $1, updated_at = NOW() WHERE id = $2',
         ['expired', voucher.id]
@@ -148,8 +161,17 @@ class VoucherModel {
         throw new Error(`Voucher sudah ${voucher.status === 'redeemed' ? 'digunakan' : 'kadaluarsa'}`);
       }
       
-      // Check if expired
-      if (new Date(voucher.valid_until) < new Date()) {
+      // Check if expired - compare dates only (not time)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Set to start of today
+      
+      const validUntilDate = new Date(voucher.valid_until);
+      validUntilDate.setHours(0, 0, 0, 0); // Set to start of valid_until date
+      
+      // Voucher expires if today is AFTER valid_until date
+      // If valid_until is 2025-01-17, voucher is valid on 2025-01-17 (all day)
+      // Voucher expires on 2025-01-18 (next day)
+      if (today > validUntilDate) {
         await client.query(
           'UPDATE vouchers SET status = $1, updated_at = NOW() WHERE id = $2',
           ['expired', voucher.id]

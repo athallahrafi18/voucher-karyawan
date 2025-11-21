@@ -53,7 +53,9 @@ export default function ValidationScreen() {
       }
     } catch (error) {
       console.error('Error checking voucher:', error);
-      Alert.alert('Error', 'Gagal memvalidasi voucher');
+      // Show simplified error message
+      const errorMessage = error.response?.data?.message || 'Voucher tidak ditemukan atau invalid';
+      Alert.alert('Invalid', errorMessage.includes('kadaluarsa') ? 'Voucher kadaluarsa' : 'Voucher invalid');
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -193,26 +195,43 @@ export default function ValidationScreen() {
           </Card.Content>
         </Card>
 
-        {/* Redeemed Info (if already used) */}
-        {isRedeemed && voucher.data && (
+        {/* Error Messages (if not valid) */}
+        {!isValid && (
           <Card style={[styles.card, styles.errorCard]}>
             <Card.Content>
-              <Text style={[styles.errorTitle, { fontSize: getFontSize(16) }]}>
-                Voucher Sudah Digunakan
-              </Text>
-              {voucher.data.redeemed_at && (
-                <Text style={[styles.errorText, { fontSize: getFontSize(14) }]}>
-                  Digunakan: {formatDateTime(voucher.data.redeemed_at)}
+              {isExpired ? (
+                <Text style={[styles.errorTitle, { fontSize: getFontSize(16) }]}>
+                  Voucher Kadaluarsa
+                </Text>
+              ) : isRedeemed && voucher.data ? (
+                <>
+                  <Text style={[styles.errorTitle, { fontSize: getFontSize(16) }]}>
+                    Voucher Sudah Digunakan
+                  </Text>
+                  {voucher.data.redeemed_at && (
+                    <Text style={[styles.errorText, { fontSize: getFontSize(14) }]}>
+                      Digunakan: {formatDateTime(voucher.data.redeemed_at)}
+                    </Text>
+                  )}
+                  {voucher.data.redeemed_by && (
+                    <Text style={[styles.errorText, { fontSize: getFontSize(14) }]}>
+                      Oleh: {voucher.data.redeemed_by}
+                    </Text>
+                  )}
+                  {voucher.data.tenant_used && (
+                    <Text style={[styles.errorText, { fontSize: getFontSize(14) }]}>
+                      Di: {voucher.data.tenant_used}
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <Text style={[styles.errorTitle, { fontSize: getFontSize(16) }]}>
+                  Voucher Invalid
                 </Text>
               )}
-              {voucher.data.redeemed_by && (
+              {voucher.message && !isRedeemed && (
                 <Text style={[styles.errorText, { fontSize: getFontSize(14) }]}>
-                  Oleh: {voucher.data.redeemed_by}
-                </Text>
-              )}
-              {voucher.data.tenant_used && (
-                <Text style={[styles.errorText, { fontSize: getFontSize(14) }]}>
-                  Di: {voucher.data.tenant_used}
+                  {voucher.message}
                 </Text>
               )}
             </Card.Content>

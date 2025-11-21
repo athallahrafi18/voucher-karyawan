@@ -122,9 +122,15 @@ export default function ScannerScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Scanning Frame */}
+        {/* Scanning Frame - Rectangle for barcode (not square for QR) */}
         <View style={styles.frameContainer}>
-          <View style={styles.scanFrame} />
+          <View style={styles.scanFrame}>
+            {/* Corner indicators for barcode scanning */}
+            <View style={[styles.corner, styles.topLeft]} />
+            <View style={[styles.corner, styles.topRight]} />
+            <View style={[styles.corner, styles.bottomLeft]} />
+            <View style={[styles.corner, styles.bottomRight]} />
+          </View>
           <Text style={[styles.instructionText, { fontSize: getFontSize(16) }]}>
             Arahkan kamera ke barcode
           </Text>
@@ -181,12 +187,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scanFrame: {
-    width: isTablet() ? 400 : 280,
-    height: isTablet() ? 400 : 280,
-    borderWidth: 3,
+    // Rectangle frame for barcode (CODE128/CODE39), not square for QR
+    width: isTablet() ? 500 : 350,
+    height: isTablet() ? 200 : 140,
+    borderWidth: 2,
     borderColor: '#fff',
     borderRadius: theme.borderRadius.md,
     backgroundColor: 'transparent',
+    position: 'relative',
+  },
+  corner: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderColor: '#fff',
+  },
+  topLeft: {
+    top: -2,
+    left: -2,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: theme.borderRadius.md,
+  },
+  topRight: {
+    top: -2,
+    right: -2,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: theme.borderRadius.md,
+  },
+  bottomLeft: {
+    bottom: -2,
+    left: -2,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: theme.borderRadius.md,
+  },
+  bottomRight: {
+    bottom: -2,
+    right: -2,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: theme.borderRadius.md,
   },
   instructionText: {
     color: '#fff',

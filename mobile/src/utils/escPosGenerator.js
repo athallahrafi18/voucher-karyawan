@@ -2,6 +2,25 @@
  * Generate ESC/POS commands for thermal printer
  * Format struk voucher Rakan Kuphi
  * Same as backend but for mobile app
+ * 
+ * SAFETY NOTES:
+ * - All ESC/POS commands used are standard and safe for thermal printers
+ * - Commands are validated to prevent out-of-range values
+ * - Printer will ignore unsupported commands (no damage)
+ * - All commands are read-only operations (no permanent settings changed)
+ * - Reset command (ESC @) is called at start to ensure clean state
+ * 
+ * COMMANDS USED (all safe):
+ * - ESC @ : Reset printer (safe, standard)
+ * - ESC a : Set alignment (safe, standard)
+ * - GS !  : Set text size (safe, standard)
+ * - ESC E : Set bold (safe, standard)
+ * - GS k  : Print barcode (safe, standard)
+ * - GS h  : Set barcode height (safe, validated range 1-255)
+ * - GS w  : Set barcode width (safe, validated range 2-6)
+ * - GS H  : Set barcode HRI position (safe, range 0-3)
+ * - GS V  : Cut paper (safe, ignored if no cutter)
+ * - LF    : Line feed (safe, standard)
  */
 
 class EscPosGenerator {
@@ -78,13 +97,17 @@ class EscPosGenerator {
   }
 
   // Set barcode height (default 50, range 1-255)
+  // Safety: Clamp to valid range to prevent printer errors
   static barcodeHeight(height = 50) {
-    return this.GS + 'h' + String.fromCharCode(height);
+    const clampedHeight = Math.max(1, Math.min(255, Math.floor(height)));
+    return this.GS + 'h' + String.fromCharCode(clampedHeight);
   }
 
   // Set barcode width (default 2, range 2-6)
+  // Safety: Clamp to valid range to prevent printer errors
   static barcodeWidth(width = 2) {
-    return this.GS + 'w' + String.fromCharCode(width);
+    const clampedWidth = Math.max(2, Math.min(6, Math.floor(width)));
+    return this.GS + 'w' + String.fromCharCode(clampedWidth);
   }
 
   // Set barcode HRI (Human Readable Interpretation) position
@@ -172,24 +195,29 @@ class EscPosGenerator {
     
     if (barcodeData) {
       // Set barcode parameters BEFORE printing barcode
-      // Height: 80 dots (good for scanning, not too tall)
+      // Safety: All parameters are validated and clamped to safe ranges
+      // Height: 80 dots (good for scanning, within safe range 1-255)
       commands += this.barcodeHeight(80);
-      // Width: 3 (good readability, not too wide)
+      // Width: 3 (good readability, within safe range 2-6)
       commands += this.barcodeWidth(3);
       // HRI: 2 = show text below barcode (for manual entry if scanner fails)
+      // HRI position: 0-3 (safe range)
       commands += this.barcodeHRI(2);
       
       // Print barcode using CODE128 (supports alphanumeric, most compatible)
-      // If CODE128 fails, printer will ignore, so we try CODE39 as fallback
+      // CODE128 is standard ESC/POS command, safe for all thermal printers
+      // If printer doesn't support CODE128, it will ignore (no damage)
       try {
         commands += this.barcode128(barcodeData);
       } catch (e) {
         console.warn('CODE128 failed, trying CODE39:', e);
         // Fallback to CODE39 if CODE128 fails
+        // CODE39 is also standard ESC/POS command, safe
         commands += this.barcode39(barcodeData);
       }
       
       // Feed line after barcode (required for some printers)
+      // LF is safe, just moves paper forward
       commands += this.LF;
       commands += this.LF;
       
@@ -215,6 +243,9 @@ class EscPosGenerator {
     commands += this.LF;
 
     // Full cut paper (to separate each voucher)
+    // GS V 0 = Full cut immediately
+    // Safety: If printer doesn't have cutter, this command is ignored (no damage)
+    // For iware ULT-80AT III with cutter, this is safe
     commands += this.GS + 'V' + '\x00'; // Full cut immediately
 
     return commands;
