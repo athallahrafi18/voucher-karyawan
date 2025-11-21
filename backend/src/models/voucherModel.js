@@ -122,17 +122,20 @@ class VoucherModel {
     const voucher = result.rows[0];
     
     // Auto-expire voucher yang lewat tanggal
-    // Compare dates only (not time) - voucher valid until end of valid_until date
+    // Voucher hanya berlaku untuk hari issue_date saja
+    // Compare dates only (not time) - voucher valid only on issue_date
+    // Use date string comparison to avoid timezone issues
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of today
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
     
-    const validUntilDate = new Date(voucher.valid_until);
-    validUntilDate.setHours(0, 0, 0, 0); // Set to start of valid_until date
+    const issueDateStr = voucher.issue_date instanceof Date 
+      ? voucher.issue_date.toISOString().split('T')[0]
+      : voucher.issue_date; // Already in YYYY-MM-DD format from database
     
-    // Voucher expires if today is AFTER valid_until date
-    // If valid_until is 2025-01-17, voucher is valid on 2025-01-17 (all day)
-    // Voucher expires on 2025-01-18 (next day)
-    if (voucher.status === 'active' && today > validUntilDate) {
+    // Voucher expires if today is NOT the same as issue_date
+    // If issue_date is 2025-11-21, voucher is valid ONLY on 2025-11-21
+    // Voucher expires on 2025-11-22 (next day) or any other day
+    if (voucher.status === 'active' && todayStr !== issueDateStr) {
       await pool.query(
         'UPDATE vouchers SET status = $1, updated_at = NOW() WHERE id = $2',
         ['expired', voucher.id]
@@ -150,36 +153,72 @@ class VoucherModel {
     try {
       await client.query('BEGIN');
       
-      // Check voucher exists and is active
+      // Step 1: Cek apakah voucher ada di database (by barcode or voucher_code)
       const voucher = await this.findByBarcode(barcode);
       
+      // Step 2: Validasi - Voucher harus ada di database
       if (!voucher) {
-        throw new Error('Voucher tidak ditemukan');
+        throw new Error('Voucher tidak ditemukan atau tidak valid. Voucher tidak terdaftar di database.');
       }
       
+      // Step 3: Validasi - Voucher tidak boleh sudah di-redeemed
+      if (voucher.status === 'redeemed') {
+        throw new Error('Voucher sudah digunakan sebelumnya. Voucher tidak dapat digunakan lagi.');
+      }
+      
+      // Step 4: Validasi - Voucher tidak boleh expired
+      if (voucher.status === 'expired') {
+        throw new Error('Voucher sudah kadaluarsa. Voucher tidak dapat digunakan.');
+      }
+      
+      // Step 5: Validasi - Voucher harus berstatus 'active'
       if (voucher.status !== 'active') {
-        throw new Error(`Voucher sudah ${voucher.status === 'redeemed' ? 'digunakan' : 'kadaluarsa'}`);
+        throw new Error(`Voucher tidak valid. Status: ${voucher.status}`);
       }
       
-      // Check if expired - compare dates only (not time)
+      // Step 6: Validasi - Cek tanggal berlaku (voucher hanya berlaku untuk hari issue_date)
+      // Use date string comparison to avoid timezone issues
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // Set to start of today
+      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
       
-      const validUntilDate = new Date(voucher.valid_until);
-      validUntilDate.setHours(0, 0, 0, 0); // Set to start of valid_until date
+      const issueDateStr = voucher.issue_date instanceof Date 
+        ? voucher.issue_date.toISOString().split('T')[0]
+        : voucher.issue_date; // Already in YYYY-MM-DD format from database
       
-      // Voucher expires if today is AFTER valid_until date
-      // If valid_until is 2025-01-17, voucher is valid on 2025-01-17 (all day)
-      // Voucher expires on 2025-01-18 (next day)
-      if (today > validUntilDate) {
+      // Voucher expires if today is NOT the same as issue_date
+      // If issue_date is 2025-11-21, voucher is valid ONLY on 2025-11-21
+      // Voucher expires on 2025-11-22 (next day) or any other day
+      if (todayStr !== issueDateStr) {
         await client.query(
           'UPDATE vouchers SET status = $1, updated_at = NOW() WHERE id = $2',
           ['expired', voucher.id]
         );
-        throw new Error('Voucher sudah kadaluarsa');
+        throw new Error('Voucher sudah kadaluarsa. Voucher hanya berlaku untuk hari issue_date.');
       }
       
-      // Update voucher to redeemed
+      // Step 7: Double-check dengan database lock untuk mencegah race condition
+      // Lock the row to prevent concurrent redemption
+      const lockedVoucher = await client.query(
+        `SELECT * FROM vouchers WHERE id = $1 FOR UPDATE`,
+        [voucher.id]
+      );
+      
+      if (lockedVoucher.rows.length === 0) {
+        throw new Error('Voucher tidak ditemukan');
+      }
+      
+      const lockedVoucherData = lockedVoucher.rows[0];
+      
+      // Re-check status after lock (prevent double redemption)
+      if (lockedVoucherData.status === 'redeemed') {
+        throw new Error('Voucher sudah digunakan sebelumnya. Voucher tidak dapat digunakan lagi.');
+      }
+      
+      if (lockedVoucherData.status !== 'active') {
+        throw new Error(`Voucher tidak valid. Status: ${lockedVoucherData.status}`);
+      }
+      
+      // Step 8: Update voucher to redeemed (with atomic operation)
       const result = await client.query(
         `UPDATE vouchers 
          SET status = 'redeemed', 
@@ -187,10 +226,15 @@ class VoucherModel {
              redeemed_by = $1, 
              tenant_used = $2,
              updated_at = NOW()
-         WHERE id = $3
+         WHERE id = $3 AND status = 'active'
          RETURNING *`,
         [redeemedBy, tenantUsed, voucher.id]
       );
+      
+      // Step 9: Validasi - Pastikan update berhasil
+      if (result.rows.length === 0) {
+        throw new Error('Gagal menggunakan voucher. Voucher mungkin sudah digunakan atau tidak valid.');
+      }
       
       await client.query('COMMIT');
       return result.rows[0];

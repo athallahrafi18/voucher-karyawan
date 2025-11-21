@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
-import { formatDateTime, formatDate } from '../../utils/formatters';
+import { formatDateTime, formatDate, formatDateForAPI } from '../../utils/formatters';
 import { isTablet, getFontSize } from '../../utils/device';
 import StatusBadge from '../../components/StatusBadge';
 import Navbar from '../../components/Navbar';
@@ -35,7 +35,7 @@ export default function HistoryScreen() {
   const loadHistory = async () => {
     try {
       setLoading(true);
-      const dateStr = formatDate(selectedDate);
+      const dateStr = formatDateForAPI(selectedDate); // Use YYYY-MM-DD format for API
       // Backend only returns redeemed vouchers (valid scans)
       // Invalid scans are not tracked in database
       const response = await voucherAPI.getScanHistory(dateStr, 'all');

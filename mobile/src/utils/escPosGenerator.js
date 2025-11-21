@@ -130,6 +130,7 @@ class EscPosGenerator {
     commands += 'RAKAN KUPHI' + this.LF;
     commands += this.textSize(1, 1);
     commands += this.bold(false);
+    commands += this.align('center'); // Re-set center alignment after textSize change
     commands += 'Voucher Makan Karyawan' + this.LF;
     commands += this.line();
     commands += this.LF;
@@ -219,10 +220,6 @@ class EscPosGenerator {
       // Feed line after barcode (required for some printers)
       // LF is safe, just moves paper forward
       commands += this.LF;
-      commands += this.LF;
-      
-      // Additional spacing
-      commands += this.LF;
     } else {
       // Fallback if no barcode data
       commands += this.textSize(1, 1);
@@ -236,17 +233,10 @@ class EscPosGenerator {
     commands += this.align('center');
     commands += 'Terima Kasih' + this.LF;
     commands += this.LF;
-    commands += this.LF;
     
-    // Feed paper before cut (to ensure proper position)
-    commands += this.LF;
-    commands += this.LF;
-
-    // Full cut paper (to separate each voucher)
-    // GS V 0 = Full cut immediately
-    // Safety: If printer doesn't have cutter, this command is ignored (no damage)
-    // For iware ULT-80AT III with cutter, this is safe
-    commands += this.GS + 'V' + '\x00'; // Full cut immediately
+    // Note: Printer has auto cut, so no manual cut command needed
+    // Minimal spacing only - no extra blank paper needed
+    // Each voucher is already separated by auto cut
 
     return commands;
   }

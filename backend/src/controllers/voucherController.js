@@ -100,53 +100,79 @@ class VoucherController {
         });
       }
 
+      // Step 1: Cek apakah voucher ada di database (by barcode or voucher_code)
       const voucher = await VoucherModel.findByBarcode(barcode);
 
+      // Step 2: Validasi - Voucher harus ada di database
       if (!voucher) {
         return res.status(404).json({
           success: false,
-          message: 'Voucher tidak ditemukan',
+          message: 'Voucher tidak ditemukan atau tidak valid',
           data: {
-            can_redeem: false
+            can_redeem: false,
+            reason: 'Voucher tidak terdaftar di database'
           }
         });
       }
 
-      // Check status
+      // Step 3: Validasi - Voucher tidak boleh sudah di-redeemed
       if (voucher.status === 'redeemed') {
         return res.json({
           success: false,
           message: 'Voucher sudah digunakan',
           data: {
             barcode: voucher.barcode,
+            voucher_code: voucher.voucher_code,
             voucher_number: voucher.voucher_number,
             status: voucher.status,
             redeemed_at: voucher.redeemed_at,
             redeemed_by: voucher.redeemed_by,
             tenant_used: voucher.tenant_used,
-            can_redeem: false
+            can_redeem: false,
+            reason: 'Voucher sudah di-redeem sebelumnya'
           }
         });
       }
 
+      // Step 4: Validasi - Voucher tidak boleh expired
       if (voucher.status === 'expired') {
         return res.json({
           success: false,
           message: 'Voucher sudah kadaluarsa',
           data: {
             barcode: voucher.barcode,
+            voucher_code: voucher.voucher_code,
             voucher_number: voucher.voucher_number,
             status: voucher.status,
-            can_redeem: false
+            issue_date: voucher.issue_date,
+            valid_until: voucher.valid_until,
+            can_redeem: false,
+            reason: 'Voucher sudah melewati tanggal berlaku'
           }
         });
       }
 
-      // Voucher is valid
+      // Step 5: Validasi - Voucher harus berstatus 'active'
+      if (voucher.status !== 'active') {
+        return res.json({
+          success: false,
+          message: 'Voucher tidak valid',
+          data: {
+            barcode: voucher.barcode,
+            voucher_code: voucher.voucher_code,
+            status: voucher.status,
+            can_redeem: false,
+            reason: `Status voucher: ${voucher.status}`
+          }
+        });
+      }
+
+      // Voucher is valid - semua validasi passed
       res.json({
         success: true,
         data: {
           barcode: voucher.barcode,
+          voucher_code: voucher.voucher_code,
           voucher_number: voucher.voucher_number,
           nominal: voucher.nominal,
           company_name: voucher.company_name,

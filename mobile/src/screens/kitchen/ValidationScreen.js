@@ -11,6 +11,7 @@ import {
 import { Card } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Picker } from '@react-native-picker/picker';
 import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
