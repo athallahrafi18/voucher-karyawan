@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Card, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
@@ -27,9 +27,11 @@ export default function HomeScreen() {
   const [report, setReport] = useState(null);
   const today = getTodayDate();
 
-  useEffect(() => {
-    fetchDailyReport();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchDailyReport();
+    }, [])
+  );
 
   const fetchDailyReport = async () => {
     try {

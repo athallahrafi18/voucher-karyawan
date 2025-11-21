@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
@@ -28,9 +29,11 @@ export default function HistoryScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  useEffect(() => {
-    loadHistory();
-  }, [selectedDate, filter]);
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [selectedDate, filter])
+  );
 
   const loadHistory = async () => {
     try {

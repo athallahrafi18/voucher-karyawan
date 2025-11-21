@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Card, ActivityIndicator } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
@@ -37,9 +38,11 @@ export default function ReportScreen() {
   const [report, setReport] = useState(null);
   const [vouchers, setVouchers] = useState([]);
 
-  useEffect(() => {
-    fetchReport();
-  }, [startDate, endDate, selectedStatus, useDateRange]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchReport();
+    }, [startDate, endDate, selectedStatus, useDateRange])
+  );
 
   const formatDateForAPI = (date) => {
     const year = date.getFullYear();

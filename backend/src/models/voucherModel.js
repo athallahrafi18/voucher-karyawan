@@ -124,18 +124,20 @@ class VoucherModel {
     // Auto-expire voucher yang lewat tanggal
     // Voucher hanya berlaku untuk hari issue_date saja
     // Compare dates only (not time) - voucher valid only on issue_date
-    // Use date string comparison to avoid timezone issues
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    // Use PostgreSQL CURRENT_DATE to get local date (avoid timezone issues)
+    const dateCheckResult = await pool.query(
+      `SELECT 
+        CASE WHEN CURRENT_DATE != $1::date THEN true ELSE false END as is_expired
+      `,
+      [voucher.issue_date]
+    );
     
-    const issueDateStr = voucher.issue_date instanceof Date 
-      ? voucher.issue_date.toISOString().split('T')[0]
-      : voucher.issue_date; // Already in YYYY-MM-DD format from database
+    const isExpired = dateCheckResult.rows[0]?.is_expired || false;
     
     // Voucher expires if today is NOT the same as issue_date
     // If issue_date is 2025-11-21, voucher is valid ONLY on 2025-11-21
     // Voucher expires on 2025-11-22 (next day) or any other day
-    if (voucher.status === 'active' && todayStr !== issueDateStr) {
+    if (voucher.status === 'active' && isExpired) {
       await pool.query(
         'UPDATE vouchers SET status = $1, updated_at = NOW() WHERE id = $2',
         ['expired', voucher.id]
@@ -177,18 +179,20 @@ class VoucherModel {
       }
       
       // Step 6: Validasi - Cek tanggal berlaku (voucher hanya berlaku untuk hari issue_date)
-      // Use date string comparison to avoid timezone issues
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+      // Use PostgreSQL CURRENT_DATE to get local date (avoid timezone issues)
+      const dateCheckResult = await client.query(
+        `SELECT 
+          CASE WHEN CURRENT_DATE != $1::date THEN true ELSE false END as is_expired
+        `,
+        [voucher.issue_date]
+      );
       
-      const issueDateStr = voucher.issue_date instanceof Date 
-        ? voucher.issue_date.toISOString().split('T')[0]
-        : voucher.issue_date; // Already in YYYY-MM-DD format from database
+      const isExpired = dateCheckResult.rows[0]?.is_expired || false;
       
       // Voucher expires if today is NOT the same as issue_date
       // If issue_date is 2025-11-21, voucher is valid ONLY on 2025-11-21
       // Voucher expires on 2025-11-22 (next day) or any other day
-      if (todayStr !== issueDateStr) {
+      if (isExpired) {
         await client.query(
           'UPDATE vouchers SET status = $1, updated_at = NOW() WHERE id = $2',
           ['expired', voucher.id]
