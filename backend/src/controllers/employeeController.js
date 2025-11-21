@@ -1,4 +1,5 @@
 const EmployeeModel = require('../models/employeeModel');
+const Validators = require('../utils/validators');
 
 class EmployeeController {
   // GET /api/employees
