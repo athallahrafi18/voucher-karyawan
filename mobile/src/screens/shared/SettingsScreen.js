@@ -187,6 +187,14 @@ export default function SettingsScreen() {
                 1.0.0
               </Text>
             </View>
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { fontSize: getFontSize(14) }]}>
+                Developer:
+              </Text>
+              <Text style={[styles.infoValue, { fontSize: getFontSize(14) }]}>
+                Rakan Kuphi IT Division
+              </Text>
+            </View>
           </Card.Content>
         </Card>
 

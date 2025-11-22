@@ -1,6 +1,8 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -10,6 +12,14 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { theme } from './src/config/theme';
 
 export default function App() {
+  useEffect(() => {
+    // Hide navigation bar on Android for full screen
+    if (Platform.OS === 'android') {
+      NavigationBar.setVisibilityAsync('hidden');
+      NavigationBar.setBackgroundColorAsync('#000000');
+    }
+  }, []);
+
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -28,7 +38,7 @@ export default function App() {
         }}>
           <AuthProvider>
             <VoucherProvider>
-              <StatusBar style="light" translucent={false} />
+              <StatusBar style="light" hidden={true} />
               <AppNavigator />
             </VoucherProvider>
           </AuthProvider>

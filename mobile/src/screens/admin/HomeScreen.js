@@ -130,7 +130,7 @@ export default function HomeScreen() {
               color={theme.colors.success}
             />
             <StatsCard
-              title="Total Unused"
+              title={['Total', 'Unused']}
               value={report?.total_unused || 0}
               icon="clock-outline"
               color={theme.colors.warning}
@@ -221,7 +221,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: getSpacing(theme.spacing.md),
-    marginHorizontal: -theme.spacing.xs,
+    marginHorizontal: isTablet() ? -theme.spacing.xs : -4,
+    justifyContent: 'space-between',
   },
   loader: {
     marginVertical: theme.spacing.xl,

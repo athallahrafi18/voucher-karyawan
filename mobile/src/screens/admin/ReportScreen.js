@@ -240,9 +240,11 @@ export default function ReportScreen() {
                     <Text
                       style={[
                         styles.statusButtonText,
-                        { fontSize: getFontSize(14) },
                         selectedStatus === filter.value && styles.statusButtonTextActive,
                       ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit={true}
+                      minimumFontScale={0.8}
                     >
                       {filter.label}
                     </Text>
@@ -547,19 +549,19 @@ const styles = StyleSheet.create({
   statusButtons: {
     flexDirection: 'row',
     flexWrap: 'nowrap',
-    gap: theme.spacing.sm,
+    gap: isTablet() ? theme.spacing.sm : 4,
   },
   statusButton: {
     flex: 1,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: isTablet() ? theme.spacing.xs : theme.spacing.md,
+    paddingHorizontal: isTablet() ? theme.spacing.xs : 4,
     borderRadius: theme.borderRadius.sm,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.primary + '40',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 36,
+    minHeight: isTablet() ? 36 : 48,
   },
   statusButtonActive: {
     backgroundColor: theme.colors.primary,
@@ -569,6 +571,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontWeight: '600',
     textAlign: 'center',
+    fontSize: isTablet() ? getFontSize(14) : 10,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   statusButtonTextActive: {
     color: '#fff',

@@ -264,14 +264,15 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     flex: 1,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: isTablet() ? theme.spacing.xs : theme.spacing.sm,
+    paddingHorizontal: isTablet() ? theme.spacing.sm : theme.spacing.xs,
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.surface,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: theme.colors.primary + '40',
-    minHeight: 40,
+    minHeight: isTablet() ? 40 : 44,
   },
   filterButtonActive: {
     backgroundColor: theme.colors.primary,
@@ -280,6 +281,8 @@ const styles = StyleSheet.create({
   filterText: {
     color: theme.colors.textSecondary,
     fontWeight: '600',
+    textAlign: 'center',
+    fontSize: isTablet() ? getFontSize(14) : getFontSize(12),
   },
   filterTextActive: {
     color: '#fff',

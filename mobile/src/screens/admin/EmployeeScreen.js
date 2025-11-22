@@ -226,8 +226,12 @@ export default function EmployeeScreen() {
                 value={employeeName}
                 onChangeText={setEmployeeName}
                 placeholder="Masukkan nama karyawan"
+                placeholderTextColor={theme.colors.textSecondary}
                 style={[styles.input, { height: isTablet() ? 56 : 48 }]}
-                contentStyle={{ fontSize: getFontSize(16) }}
+                contentStyle={{ fontSize: getFontSize(16), color: theme.colors.text }}
+                outlineColor={theme.colors.primary + '40'}
+                activeOutlineColor={theme.colors.primary}
+                textColor={theme.colors.text}
                 autoFocus
               />
 
@@ -239,8 +243,12 @@ export default function EmployeeScreen() {
                 value={employeeCode}
                 onChangeText={setEmployeeCode}
                 placeholder="Masukkan kode karyawan (opsional)"
+                placeholderTextColor={theme.colors.textSecondary}
                 style={[styles.input, { height: isTablet() ? 56 : 48 }]}
-                contentStyle={{ fontSize: getFontSize(16) }}
+                contentStyle={{ fontSize: getFontSize(16), color: theme.colors.text }}
+                outlineColor={theme.colors.primary + '40'}
+                activeOutlineColor={theme.colors.primary}
+                textColor={theme.colors.text}
               />
 
               <View style={styles.modalActions}>
