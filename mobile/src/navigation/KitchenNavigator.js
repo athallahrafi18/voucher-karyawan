@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../config/theme';
 import { isTablet } from '../utils/device';
 
@@ -14,6 +15,9 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function KitchenTabs() {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, isTablet() ? 12 : 8);
+  
   return (
     <Tab.Navigator
       screenOptions={{
@@ -21,9 +25,13 @@ function KitchenTabs() {
         tabBarActiveTintColor: theme.colors.secondary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarStyle: {
-          height: isTablet() ? 72 : 60,
-          paddingBottom: isTablet() ? 12 : 8,
+          height: (isTablet() ? 72 : 60) + bottomPadding,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
+          backgroundColor: theme.colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.primary + '40',
+          elevation: 8,
         },
         tabBarLabelStyle: {
           fontSize: isTablet() ? 14 : 12,

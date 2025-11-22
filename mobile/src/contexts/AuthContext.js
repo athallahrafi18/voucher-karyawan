@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ROLES } from '../config/roles';
+import logger from '../utils/logger';
 
 const AuthContext = createContext();
 
@@ -22,7 +23,7 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
       }
     } catch (error) {
-      console.error('Error checking stored role:', error);
+      logger.error('Error checking stored role:', error);
     } finally {
       setIsLoading(false);
     }
@@ -37,7 +38,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       await AsyncStorage.setItem('userRole', role);
     } catch (error) {
-      console.error('Error logging in:', error);
+      logger.error('Error logging in:', error);
       throw error;
     }
   };
@@ -48,7 +49,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       await AsyncStorage.removeItem('userRole');
     } catch (error) {
-      console.error('Error logging out:', error);
+      logger.error('Error logging out:', error);
     }
   };
 

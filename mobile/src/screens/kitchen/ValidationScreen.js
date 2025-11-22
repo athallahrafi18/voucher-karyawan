@@ -15,9 +15,10 @@ import { Picker } from '@react-native-picker/picker';
 import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
-import { isTablet, getFontSize } from '../../utils/device';
+import { isTablet, getFontSize, getPadding, getSpacing } from '../../utils/device';
 import { updateScanHistory } from '../../utils/storage';
 import StatusBadge from '../../components/StatusBadge';
+import logger from '../../utils/logger';
 
 const TENANTS = ['Martabak Rakan', 'Mie Aceh Rakan'];
 
@@ -63,7 +64,7 @@ export default function ValidationScreen() {
         await updateScanHistory(barcode, { status: 'invalid' });
       }
     } catch (error) {
-      console.error('Error checking voucher:', error);
+      logger.error('Error checking voucher:', error);
       // Show simplified error message
       const errorMessage = error.response?.data?.message || 'Voucher tidak ditemukan atau invalid';
       Alert.alert('Invalid', errorMessage.includes('kadaluarsa') ? 'Voucher kadaluarsa' : 'Voucher invalid');
@@ -104,7 +105,7 @@ export default function ValidationScreen() {
         );
       }
     } catch (error) {
-      console.error('Error redeeming voucher:', error);
+      logger.error('Error redeeming voucher:', error);
       Alert.alert('Error', error.response?.data?.message || 'Gagal menggunakan voucher');
     } finally {
       setRedeeming(false);
@@ -351,7 +352,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   content: {
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
+    paddingBottom: getPadding(theme.spacing.xl),
   },
   loadingContainer: {
     flex: 1,
@@ -371,8 +373,12 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
   },
   card: {
-    marginBottom: theme.spacing.lg,
-    elevation: 2,
+    marginBottom: getSpacing(theme.spacing.md),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    borderRadius: theme.borderRadius.md,
   },
   errorCard: {
     borderLeftWidth: 4,
@@ -416,7 +422,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.sm,
     borderWidth: 1,
-    borderColor: theme.colors.textSecondary + '30',
+    borderColor: theme.colors.primary + '50',
     overflow: 'hidden',
   },
   pickerContainerDisabled: {
@@ -445,7 +451,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   redeemButton: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     flexDirection: 'row',

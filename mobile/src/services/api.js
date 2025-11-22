@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { buildUrl } from '../config/api';
+import logger from '../utils/logger';
 
 // Create axios instance
 const api = axios.create({
@@ -16,7 +17,7 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    console.log('API Request:', config.method?.toUpperCase(), config.url);
+    logger.debug('API Request:', config.method?.toUpperCase(), config.url);
     return config;
   },
   (error) => {
@@ -31,9 +32,9 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      console.error('API Error: Network Error - Check your internet connection and API URL');
-      console.error('API URL:', error.config?.url);
-      console.error('Error details:', {
+      logger.error('API Error: Network Error - Check your internet connection and API URL');
+      logger.debug('API URL:', error.config?.url);
+      logger.debug('Error details:', {
         code: error.code,
         message: error.message,
         config: {
@@ -43,11 +44,11 @@ api.interceptors.response.use(
         }
       });
     } else if (error.code === 'ECONNABORTED') {
-      console.error('API Error: Request timeout - Server took too long to respond');
-      console.error('API URL:', error.config?.url);
+      logger.error('API Error: Request timeout - Server took too long to respond');
+      logger.debug('API URL:', error.config?.url);
     } else {
-      console.error('API Error:', error.response?.data || error.message);
-      console.error('Status:', error.response?.status);
+      logger.error('API Error:', error.response?.data || error.message);
+      logger.debug('Status:', error.response?.status);
     }
     return Promise.reject(error);
   }

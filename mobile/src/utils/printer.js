@@ -6,9 +6,8 @@
  * Will NOT work in Expo Go
  */
 
-console.log('📄 printer.js file loaded');
-
 import EscPosGenerator from './escPosGenerator';
+import logger from './logger';
 
 // Import thermal printer library
 let NetPrinter = null;
@@ -18,16 +17,14 @@ try {
   // react-native-thermal-receipt-printer requires native module
   // This will work in development build or production build (EAS Build)
   // Will NOT work in Expo Go
-  console.log('🔍 Attempting to load react-native-thermal-receipt-printer...');
+  logger.debug('Attempting to load react-native-thermal-receipt-printer...');
   
   let ThermalPrinterModule;
   try {
     ThermalPrinterModule = require('react-native-thermal-receipt-printer');
-    console.log('📦 Module loaded:', !!ThermalPrinterModule);
-    console.log('📦 Module type:', typeof ThermalPrinterModule);
-    console.log('📦 Module keys:', Object.keys(ThermalPrinterModule || {}));
+    logger.debug('Module loaded:', !!ThermalPrinterModule);
   } catch (requireError) {
-    console.error('❌ Failed to require module:', requireError);
+    logger.error('Failed to require module:', requireError);
     throw requireError;
   }
   
@@ -40,45 +37,38 @@ try {
   if (ThermalPrinterModule && ThermalPrinterModule.NetPrinter) {
     NetPrinter = ThermalPrinterModule.NetPrinter;
     isThermalPrinterAvailable = true;
-    console.log('✅ Found NetPrinter at ThermalPrinterModule.NetPrinter');
-    console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
+    logger.debug('Found NetPrinter at ThermalPrinterModule.NetPrinter');
   } else if (ThermalPrinterModule && ThermalPrinterModule.default) {
     if (ThermalPrinterModule.default.NetPrinter) {
       NetPrinter = ThermalPrinterModule.default.NetPrinter;
       isThermalPrinterAvailable = true;
-      console.log('✅ Found NetPrinter at ThermalPrinterModule.default.NetPrinter');
-      console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
+      logger.debug('Found NetPrinter at ThermalPrinterModule.default.NetPrinter');
     } else if (ThermalPrinterModule.default && typeof ThermalPrinterModule.default === 'object') {
       NetPrinter = ThermalPrinterModule.default;
       isThermalPrinterAvailable = true;
-      console.log('✅ Using ThermalPrinterModule.default as NetPrinter');
-      console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
+      logger.debug('Using ThermalPrinterModule.default as NetPrinter');
     }
   } else if (ThermalPrinterModule && typeof ThermalPrinterModule === 'object') {
     if (ThermalPrinterModule.NetPrinter) {
       NetPrinter = ThermalPrinterModule.NetPrinter;
       isThermalPrinterAvailable = true;
-      console.log('✅ Found NetPrinter in module object');
+      logger.debug('Found NetPrinter in module object');
     } else {
       NetPrinter = ThermalPrinterModule;
       isThermalPrinterAvailable = true;
-      console.log('✅ Using module as NetPrinter');
+      logger.debug('Using module as NetPrinter');
     }
-    console.log('📦 NetPrinter keys:', Object.keys(NetPrinter || {}));
   }
   
   if (isThermalPrinterAvailable && NetPrinter) {
-    console.log('✅ Thermal Printer library available and ready to use');
-    console.log('📦 NetPrinter type:', typeof NetPrinter);
-    console.log('📦 NetPrinter has printText:', typeof NetPrinter.printText);
-    console.log('📦 NetPrinter has printBill:', typeof NetPrinter.printBill);
+    logger.debug('Thermal Printer library available and ready to use');
   } else {
-    console.warn('⚠️ Thermal Printer not found in module');
+    logger.warn('Thermal Printer not found in module');
   }
 } catch (e) {
-  console.error('❌ Thermal Printer library not available:', e.message);
-  console.error('❌ Error details:', e);
-  console.warn('⚠️ For direct TCP printing, build with EAS Build (not Expo Go).');
+  logger.error('Thermal Printer library not available:', e.message);
+  logger.error('Error details:', e);
+  logger.warn('For direct TCP printing, build with EAS Build (not Expo Go).');
   NetPrinter = null;
   isThermalPrinterAvailable = false;
 }
@@ -95,13 +85,13 @@ let initPromise = null; // Store init promise to prevent multiple concurrent ini
 export const initPrinter = async () => {
   // If already initialized, return immediately
   if (isPrinterInitialized) {
-    console.log('✅ Printer already initialized');
+    logger.debug('Printer already initialized');
     return;
   }
   
   // If init is in progress, wait for it
   if (initPromise) {
-    console.log('⏳ Printer initialization in progress, waiting...');
+    logger.debug('Printer initialization in progress, waiting...');
     await initPromise;
     return;
   }
@@ -119,8 +109,7 @@ export const initPrinter = async () => {
   // Start initialization
   initPromise = (async () => {
     try {
-      console.log('🔧 Initializing printer library...');
-      console.log('📦 NetPrinter.init type:', typeof NetPrinter.init);
+      logger.debug('Initializing printer library...');
       
       // Call init() - this is CRITICAL to avoid NullPointerException
       await NetPrinter.init();
@@ -129,11 +118,10 @@ export const initPrinter = async () => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       isPrinterInitialized = true;
-      console.log('✅ Printer library initialized successfully');
+      logger.debug('Printer library initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize printer library:', error);
-      console.error('❌ Error message:', error.message);
-      console.error('❌ Error stack:', error.stack);
+      logger.error('Failed to initialize printer library:', error);
+      logger.error('Error message:', error.message);
       isPrinterInitialized = false;
       initPromise = null;
       throw new Error(`Failed to initialize printer library: ${error.message}`);
@@ -180,10 +168,8 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
         throw new Error(`Invalid printer port: ${port}. Please set printer port in Settings (1-65535).`);
       }
       
-      console.log(`🖨️ Attempting to connect to printer ${host}:${port}`);
-      console.log(`📦 Data size: ${printData.length} bytes`);
-      console.log(`📦 NetPrinter available: ${!!NetPrinter}`);
-      console.log(`📦 NetPrinter type: ${typeof NetPrinter}`);
+      logger.debug(`Attempting to connect to printer ${host}:${port}`);
+      logger.debug(`Data size: ${printData.length} bytes`);
       
       // Double check NetPrinter is still available
       if (!NetPrinter || typeof NetPrinter !== 'object') {
@@ -202,35 +188,30 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
           // Step 0: Initialize printer library (CRITICAL - must be done before connectPrinter)
           // This prevents NullPointerException: PrinterAdapter.selectDevice() on null object
           if (!isPrinterInitialized) {
-            console.log(`🔧 Step 0: Initializing printer library (required before connect)...`);
+            logger.debug('Step 0: Initializing printer library (required before connect)...');
             await initPrinter();
-            console.log(`✅ Printer library ready for connection`);
-          } else {
-            console.log(`✅ Printer library already initialized`);
+            logger.debug('Printer library ready for connection');
           }
           
           // Step 1: Connect to printer
           // connectPrinter expects (host: string, port: number) as separate parameters
           // Port MUST be number, not string
-          console.log(`🔌 Step 1: Connecting to printer ${host}:${port}...`);
-          console.log(`🔌 Host type: ${typeof host}, Port type: ${typeof port}`);
+          logger.debug(`Step 1: Connecting to printer ${host}:${port}...`);
           
           // Connect with port as number (not string)
           await NetPrinter.connectPrinter(host, port);
-          console.log(`✅ Connected to printer ${host}:${port}`);
+          logger.debug(`Connected to printer ${host}:${port}`);
           
           try {
             // Step 2: Print ESC/POS commands
             // For raw ESC/POS commands, use printText directly with the ESC/POS string
             // This is similar to backend which uses socket.write(data) directly
-            console.log(`📤 Step 2: Sending ${printData.length} bytes to printer...`);
-            console.log(`📤 Print data preview (first 100 chars):`, printData.substring(0, 100));
-            console.log(`📤 Data type: ${typeof printData}, Length: ${printData.length}`);
+            logger.debug(`Step 2: Sending ${printData.length} bytes to printer...`);
             
             // Use printText for raw ESC/POS commands
             // This library may have issues with raw binary ESC/POS, but it's the best we can do
             if (NetPrinter.printText && typeof NetPrinter.printText === 'function') {
-              console.log(`📤 Using printText with ESC/POS string (${printData.length} bytes)`);
+              logger.debug(`Using printText with ESC/POS string (${printData.length} bytes)`);
               
               try {
                 // Send data to printer
@@ -240,34 +221,30 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
                 // Some printers need time to process ESC/POS commands
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                console.log(`✅ printText completed successfully`);
+                logger.debug('printText completed successfully');
               } catch (printTextError) {
-                console.error(`❌ printText failed:`, printTextError);
-                console.error(`❌ Error details:`, printTextError.message);
+                logger.error('printText failed:', printTextError);
                 throw printTextError;
               }
             } else {
               throw new Error('NetPrinter.printText() is not available');
             }
             
-            console.log(`✅ Successfully sent data to printer ${host}:${port}`);
+            logger.debug(`Successfully sent data to printer ${host}:${port}`);
             
           } finally {
             // Step 3: Close connection
-            console.log(`🔌 Step 3: Closing connection...`);
+            logger.debug('Step 3: Closing connection...');
             if (NetPrinter.closeConn && typeof NetPrinter.closeConn === 'function') {
               await NetPrinter.closeConn();
-              console.log(`✅ Connection closed`);
+              logger.debug('Connection closed');
             }
           }
           
         } catch (printError) {
-          console.error('❌ ========== PRINTER ERROR ==========');
-          console.error('❌ Printer error:', printError);
-          console.error('❌ Error message:', printError.message);
-          console.error('❌ Error details:', JSON.stringify(printError, null, 2));
-          console.error('❌ Connection params:', { host, port });
-          console.error('❌ ====================================');
+          logger.error('PRINTER ERROR:', printError);
+          logger.error('Error message:', printError.message);
+          logger.debug('Connection params:', { host, port });
           
           // Build detailed error message
           let errorMsg = 'Failed to connect to printer';
@@ -281,7 +258,7 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
         }
       } else {
         // Fallback: Show error message if thermal printer not available
-        console.warn('⚠️ Thermal Printer library not available. Cannot print directly.');
+        logger.warn('Thermal Printer library not available. Cannot print directly.');
         throw new Error(
           `Printing tidak tersedia di Expo Go.\n\n` +
           `Untuk print langsung ke printer, Anda perlu:\n` +
@@ -293,7 +270,7 @@ export const printVoucher = async (voucher, printerIp, printerPort = 9100) => {
         );
       }
     } catch (error) {
-      console.error('❌ Unexpected error in printVoucher:', error);
+      logger.error('Unexpected error in printVoucher:', error);
       throw error;
     }
 };
@@ -309,19 +286,11 @@ export const printVouchers = async (vouchers, printerIp, printerPort = 9100) => 
   let printedCount = 0;
   const errors = [];
   
-  console.log('🖨️ ========== START PRINTING ==========');
-  console.log(`🖨️ Starting to print ${vouchers.length} voucher(s) to ${printerIp}:${printerPort}`);
-  console.log(`📡 Thermal Printer available: ${isThermalPrinterAvailable}`);
-  console.log(`🔌 NetPrinter type: ${typeof NetPrinter}`);
-  console.log(`🔌 NetPrinter available: ${!!NetPrinter}`);
-  if (NetPrinter) {
-    console.log(`🔌 NetPrinter methods:`, Object.keys(NetPrinter));
-  }
-  console.log('🖨️ ====================================');
+  logger.debug(`Starting to print ${vouchers.length} voucher(s) to ${printerIp}:${printerPort}`);
   
   if (!isThermalPrinterAvailable || !NetPrinter) {
     const errorMsg = 'Thermal Printer library tidak tersedia. Pastikan menggunakan APK build (bukan Expo Go).';
-    console.error('❌', errorMsg);
+    logger.error(errorMsg);
     throw new Error(errorMsg);
   }
   
@@ -329,10 +298,10 @@ export const printVouchers = async (vouchers, printerIp, printerPort = 9100) => 
     const voucher = vouchers[i];
     
     try {
-      console.log(`🖨️ Printing voucher ${i + 1}/${vouchers.length} - ${voucher.voucher_code || voucher.barcode}`);
+      logger.debug(`Printing voucher ${i + 1}/${vouchers.length} - ${voucher.voucher_code || voucher.barcode}`);
       await printVoucher(voucher, printerIp, printerPort);
       printedCount++;
-      console.log(`✅ Voucher ${i + 1} printed successfully`);
+      logger.debug(`Voucher ${i + 1} printed successfully`);
       
       // Small delay between prints
       if (i < vouchers.length - 1) {
@@ -346,16 +315,15 @@ export const printVouchers = async (vouchers, printerIp, printerPort = 9100) => 
         errorCode: error.code
       };
       errors.push(errorInfo);
-      console.error(`❌ Error printing voucher ${i + 1} (${voucher.voucher_code || voucher.barcode}):`, error);
-      console.error(`❌ Error details:`, errorInfo);
+      logger.error(`Error printing voucher ${i + 1} (${voucher.voucher_code || voucher.barcode}):`, error);
       // Continue with next voucher even if one fails
     }
   }
   
-  console.log(`📊 Print summary: ${printedCount}/${vouchers.length} successful, ${errors.length} failed`);
+  logger.debug(`Print summary: ${printedCount}/${vouchers.length} successful, ${errors.length} failed`);
   
   if (errors.length > 0) {
-    console.error('❌ Print errors:', errors);
+    logger.error('Print errors:', errors);
   }
   
   return { printedCount, errors };

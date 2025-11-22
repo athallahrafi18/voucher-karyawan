@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth, ROLES } from '../../contexts/AuthContext';
 import { theme } from '../../config/theme';
-import { isTablet, getFontSize } from '../../utils/device';
+import { isTablet, getFontSize, getPadding } from '../../utils/device';
 
 const { width } = Dimensions.get('window');
 
@@ -23,14 +23,14 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={['#2563EB', '#7C3AED']}
+      colors={['#000000', '#1A1A1A']}
       style={styles.container}
     >
       <View style={styles.content}>
         <MaterialCommunityIcons
           name="ticket-percent"
           size={isTablet() ? 120 : 80}
-          color="#fff"
+          color={theme.colors.primary}
           style={styles.icon}
         />
         <Text style={[styles.title, { fontSize: getFontSize(32) }]}>
@@ -49,7 +49,7 @@ export default function LoginScreen() {
             <MaterialCommunityIcons
               name="account-tie"
               size={isTablet() ? 48 : 40}
-              color="#fff"
+              color={theme.colors.primary}
             />
             <Text style={[styles.buttonText, { fontSize: getFontSize(24) }]}>
               ADMIN
@@ -67,7 +67,7 @@ export default function LoginScreen() {
             <MaterialCommunityIcons
               name="chef-hat"
               size={isTablet() ? 48 : 40}
-              color="#fff"
+              color={theme.colors.primary}
             />
             <Text style={[styles.buttonText, { fontSize: getFontSize(24) }]}>
               KITCHEN
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: getPadding(theme.spacing.lg),
   },
   icon: {
     marginBottom: theme.spacing.xl,
@@ -113,20 +113,22 @@ const styles = StyleSheet.create({
     gap: theme.spacing.lg,
   },
   button: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.xl,
+    padding: getPadding(theme.spacing.lg),
     alignItems: 'center',
-    minHeight: isTablet() ? 160 : 140,
+    minHeight: isTablet() ? 160 : 120,
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: theme.colors.primary,
   },
   adminButton: {
-    backgroundColor: 'rgba(37, 99, 235, 0.3)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.primary,
   },
   kitchenButton: {
-    backgroundColor: 'rgba(16, 185, 129, 0.3)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.primary,
   },
   buttonText: {
     color: '#fff',

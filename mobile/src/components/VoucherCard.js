@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Card } from 'react-native-paper';
 import { theme } from '../config/theme';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import { isTablet, getFontSize } from '../utils/device';
+import { isTablet, getFontSize, getSpacing } from '../utils/device';
 
 export default function VoucherCard({ voucher, style }) {
   const getStatusColor = (status) => {
@@ -11,7 +11,7 @@ export default function VoucherCard({ voucher, style }) {
       case 'active':
         return theme.colors.success;
       case 'redeemed':
-        return theme.colors.primary;
+        return theme.colors.primary; // Gold
       case 'expired':
         return theme.colors.error;
       default:
@@ -83,8 +83,12 @@ export default function VoucherCard({ voucher, style }) {
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: theme.spacing.md,
-    elevation: 2,
+    marginBottom: getSpacing(theme.spacing.sm),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
+    borderRadius: theme.borderRadius.md,
   },
   header: {
     flexDirection: 'row',
@@ -119,7 +123,7 @@ const styles = StyleSheet.create({
   },
   nominal: {
     fontWeight: 'bold',
-    color: theme.colors.success,
+    color: theme.colors.primary,
   },
   date: {
     color: theme.colors.textSecondary,
@@ -128,7 +132,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.background,
+    borderTopColor: theme.colors.surface,
   },
   redeemText: {
     color: theme.colors.textSecondary,

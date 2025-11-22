@@ -30,3 +30,15 @@ export const getSpacing = (baseSpacing) => {
   return isTablet() ? baseSpacing * 1.5 : baseSpacing;
 };
 
+/**
+ * Get responsive padding for mobile (reduced for phones)
+ */
+export const getPadding = (basePadding) => {
+  const { width } = Dimensions.get('window');
+  if (width < 400) {
+    // Small phones - reduce padding
+    return Math.max(basePadding * 0.75, 8);
+  }
+  return isTablet() ? basePadding * 1.5 : basePadding;
+};
+

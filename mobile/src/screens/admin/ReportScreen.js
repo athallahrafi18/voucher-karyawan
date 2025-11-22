@@ -15,9 +15,10 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatDate, formatDateTime, getTodayDate } from '../../utils/formatters';
-import { isTablet, getFontSize } from '../../utils/device';
+import { isTablet, getFontSize, getPadding, getSpacing } from '../../utils/device';
 import VoucherCard from '../../components/VoucherCard';
 import Navbar from '../../components/Navbar';
+import logger from '../../utils/logger';
 
 const STATUS_FILTERS = [
   { label: 'Semua Status', value: 'all' },
@@ -70,9 +71,7 @@ export default function ReportScreen() {
         setVouchers(detailsResponse.data);
       }
     } catch (error) {
-      console.error('Error fetching report:', error);
-      // Error handling sudah di interceptor, tidak perlu Alert di sini
-      // User akan melihat loading state yang hilang jika error
+      logger.error('Error fetching report:', error);
     } finally {
       setLoading(false);
     }
@@ -260,6 +259,7 @@ export default function ReportScreen() {
             value={startDate}
             mode="date"
             display="default"
+            maximumDate={new Date()}
             onChange={handleStartDateChange}
           />
         )}
@@ -268,8 +268,9 @@ export default function ReportScreen() {
             value={endDate}
             mode="date"
             display="default"
-            onChange={handleEndDateChange}
             minimumDate={startDate}
+            maximumDate={new Date()}
+            onChange={handleEndDateChange}
           />
         )}
 
@@ -466,8 +467,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterCard: {
-    margin: theme.spacing.md,
-    elevation: 2,
+    margin: getPadding(theme.spacing.md),
+    marginBottom: getSpacing(theme.spacing.sm),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    borderRadius: theme.borderRadius.md,
   },
   toggleContainer: {
     marginBottom: theme.spacing.md,
@@ -483,13 +489,15 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     flex: 1,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
     borderRadius: theme.borderRadius.sm,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.textSecondary + '30',
+    borderColor: theme.colors.primary + '40',
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
   },
   toggleButtonActive: {
     backgroundColor: theme.colors.primary,
@@ -498,6 +506,7 @@ const styles = StyleSheet.create({
   toggleButtonText: {
     color: theme.colors.textSecondary,
     fontWeight: '600',
+    textAlign: 'center',
   },
   toggleButtonTextActive: {
     color: '#fff',
@@ -512,13 +521,14 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.sm,
     borderWidth: 1,
-    borderColor: theme.colors.textSecondary + '30',
+    borderColor: theme.colors.primary + '40',
+    minHeight: 44,
   },
   dateInfo: {
     flex: 1,
@@ -541,13 +551,15 @@ const styles = StyleSheet.create({
   },
   statusButton: {
     flex: 1,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
     paddingHorizontal: theme.spacing.xs,
     borderRadius: theme.borderRadius.sm,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.textSecondary + '30',
+    borderColor: theme.colors.primary + '40',
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 36,
   },
   statusButtonActive: {
     backgroundColor: theme.colors.primary,
@@ -556,6 +568,7 @@ const styles = StyleSheet.create({
   statusButtonText: {
     color: theme.colors.textSecondary,
     fontWeight: '600',
+    textAlign: 'center',
   },
   statusButtonTextActive: {
     color: '#fff',
@@ -565,13 +578,18 @@ const styles = StyleSheet.create({
   },
   summaryContainer: {
     flexDirection: 'row',
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    gap: theme.spacing.md,
+    paddingHorizontal: getPadding(theme.spacing.md),
+    marginBottom: getSpacing(theme.spacing.sm),
+    gap: theme.spacing.sm,
   },
   summaryCard: {
     flex: 1,
-    elevation: 2,
+    elevation: 4,
+    minWidth: '47%',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
+    borderRadius: theme.borderRadius.md,
   },
   summaryLabel: {
     color: theme.colors.textSecondary,
@@ -586,8 +604,13 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
   progressCard: {
-    margin: theme.spacing.md,
-    elevation: 2,
+    margin: getPadding(theme.spacing.md),
+    marginTop: getSpacing(theme.spacing.sm),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    borderRadius: theme.borderRadius.md,
   },
   progressLabel: {
     color: theme.colors.text,
@@ -611,8 +634,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tenantCard: {
-    margin: theme.spacing.md,
-    elevation: 2,
+    margin: getPadding(theme.spacing.md),
+    marginTop: getSpacing(theme.spacing.sm),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    borderRadius: theme.borderRadius.md,
   },
   tenantTitle: {
     fontWeight: 'bold',
@@ -644,11 +672,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
   },
   emptyCard: {
-    margin: theme.spacing.md,
-    elevation: 1,
+    margin: getPadding(theme.spacing.md),
+    elevation: 2,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '20',
+    borderRadius: theme.borderRadius.md,
   },
   emptyText: {
     color: theme.colors.textSecondary,
@@ -656,10 +688,13 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   periodCard: {
-    margin: theme.spacing.md,
-    marginTop: theme.spacing.sm,
-    elevation: 1,
+    margin: getPadding(theme.spacing.md),
+    marginTop: getSpacing(theme.spacing.xs),
+    elevation: 3,
     backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
+    borderRadius: theme.borderRadius.md,
   },
   periodContainer: {
     gap: theme.spacing.sm,

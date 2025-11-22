@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from './logger';
 
 const STORAGE_KEYS = {
   USER_ROLE: 'userRole',
@@ -22,7 +23,7 @@ export const getScanHistory = async () => {
       return itemDate === today;
     });
   } catch (error) {
-    console.error('Error getting scan history:', error);
+    logger.error('Error getting scan history:', error);
     return [];
   }
 };
@@ -36,7 +37,7 @@ export const saveScanHistory = async (scanData) => {
     const newHistory = [scanData, ...history].slice(0, 100); // Max 100 items
     await AsyncStorage.setItem(STORAGE_KEYS.SCAN_HISTORY, JSON.stringify(newHistory));
   } catch (error) {
-    console.error('Error saving scan history:', error);
+    logger.error('Error saving scan history:', error);
   }
 };
 
@@ -54,7 +55,7 @@ export const updateScanHistory = async (barcode, updates) => {
     });
     await AsyncStorage.setItem(STORAGE_KEYS.SCAN_HISTORY, JSON.stringify(updatedHistory));
   } catch (error) {
-    console.error('Error updating scan history:', error);
+    logger.error('Error updating scan history:', error);
   }
 };
 
@@ -65,7 +66,7 @@ export const clearScanHistory = async () => {
   try {
     await AsyncStorage.removeItem(STORAGE_KEYS.SCAN_HISTORY);
   } catch (error) {
-    console.error('Error clearing scan history:', error);
+    logger.error('Error clearing scan history:', error);
   }
 };
 
@@ -76,7 +77,7 @@ export const saveSettings = async (settings) => {
   try {
     await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   } catch (error) {
-    console.error('Error saving settings:', error);
+    logger.error('Error saving settings:', error);
   }
 };
 
@@ -88,7 +89,7 @@ export const getSettings = async () => {
     const settings = await AsyncStorage.getItem(STORAGE_KEYS.SETTINGS);
     return settings ? JSON.parse(settings) : {};
   } catch (error) {
-    console.error('Error getting settings:', error);
+    logger.error('Error getting settings:', error);
     return {};
   }
 };
@@ -105,7 +106,7 @@ export const savePrinterSettings = async (printerIp, printerPort, paperSize = '5
     };
     await AsyncStorage.setItem('printer_settings', JSON.stringify(settings));
   } catch (error) {
-    console.error('Error saving printer settings:', error);
+    logger.error('Error saving printer settings:', error);
   }
 };
 
@@ -125,7 +126,7 @@ export const getPrinterSettings = async () => {
       paper_size: '80', // Default 58mm
     };
   } catch (error) {
-    console.error('Error getting printer settings:', error);
+    logger.error('Error getting printer settings:', error);
     return {
       printer_ip: '192.168.110.10',
       printer_port: 9100,

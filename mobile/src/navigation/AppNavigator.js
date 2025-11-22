@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAuth, ROLES } from '../contexts/AuthContext';
+import { theme } from '../config/theme';
 import AuthNavigator from './AuthNavigator';
 import AdminNavigator from './AdminNavigator';
 import KitchenNavigator from './KitchenNavigator';
@@ -15,7 +16,7 @@ export default function AppNavigator() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -40,7 +41,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background,
   },
 });
 

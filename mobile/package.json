@@ -4,10 +4,16 @@
   "description": "Aplikasi manajemen voucher makan karyawan untuk Rakan Kuphi. Fitur generate voucher, scan barcode, dan print langsung ke printer thermal.",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "start": "node --max-old-space-size=4096 node_modules/expo/bin/cli.js start",
-    "android": "node --max-old-space-size=4096 node_modules/expo/bin/cli.js start --android",
-    "ios": "node --max-old-space-size=4096 node_modules/expo/bin/cli.js start --ios",
-    "web": "node --max-old-space-size=4096 node_modules/expo/bin/cli.js start --web"
+    "start": "node --max-old-space-size=8192 node_modules/expo/bin/cli.js start",
+    "android": "node --max-old-space-size=8192 node_modules/expo/bin/cli.js start --android",
+    "ios": "node --max-old-space-size=8192 node_modules/expo/bin/cli.js start --ios",
+    "web": "node --max-old-space-size=8192 node_modules/expo/bin/cli.js start --web",
+    "start:clear": "node --max-old-space-size=8192 node_modules/expo/bin/cli.js start --clear",
+    "android:clear": "node --max-old-space-size=8192 node_modules/expo/bin/cli.js start --android --clear",
+    "ios:clear": "node --max-old-space-size=8192 node_modules/expo/bin/cli.js start --ios --clear",
+    "build:android": "eas build --platform android",
+    "build:ios": "eas build --platform ios",
+    "build:all": "eas build --platform all"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -18,7 +24,6 @@
     "@react-navigation/native-stack": "^6.9.17",
     "axios": "^1.6.2",
     "expo": "~54.0.0",
-    "expo-av": "~16.0.7",
     "expo-camera": "~17.0.9",
     "expo-haptics": "~15.0.7",
     "expo-linear-gradient": "~15.0.7",
@@ -36,5 +41,16 @@
   "devDependencies": {
     "@babel/core": "^7.25.0"
   },
-  "private": true
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "private": true,
+  "keywords": [
+    "voucher",
+    "thermal-printer",
+    "barcode",
+    "react-native",
+    "expo"
+  ]
 }

@@ -15,9 +15,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../config/theme';
 import { ROLES, ROLE_LABELS } from '../../config/roles';
-import { isTablet, getFontSize } from '../../utils/device';
+import { isTablet, getFontSize, getPadding, getSpacing } from '../../utils/device';
 import { savePrinterSettings, getPrinterSettings } from '../../utils/storage';
 import Navbar from '../../components/Navbar';
+import logger from '../../utils/logger';
 
 export default function SettingsScreen() {
   const { userRole, logout } = useAuth();
@@ -59,7 +60,7 @@ export default function SettingsScreen() {
       Alert.alert('Berhasil', 'Setting printer berhasil disimpan');
       setShowPrinterModal(false);
     } catch (error) {
-      console.error('Error saving printer settings:', error);
+      logger.error('Error saving printer settings:', error);
       Alert.alert('Error', 'Gagal menyimpan setting printer');
     } finally {
       setSaving(false);
@@ -334,11 +335,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
   },
   card: {
-    marginBottom: theme.spacing.lg,
-    elevation: 2,
+    marginBottom: getSpacing(theme.spacing.md),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    borderRadius: theme.borderRadius.md,
   },
   userInfo: {
     flexDirection: 'row',
@@ -454,7 +459,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.borderRadius.md,
     borderWidth: 2,
-    borderColor: theme.colors.textSecondary + '50',
+    borderColor: theme.colors.primary + '50',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
   },

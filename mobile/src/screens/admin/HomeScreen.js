@@ -15,9 +15,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatDate, getTodayDate } from '../../utils/formatters';
-import { isTablet, getFontSize, getSpacing } from '../../utils/device';
+import { isTablet, getFontSize, getSpacing, getPadding } from '../../utils/device';
 import StatsCard from '../../components/StatsCard';
 import Navbar from '../../components/Navbar';
+import logger from '../../utils/logger';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -27,13 +28,7 @@ export default function HomeScreen() {
   const [report, setReport] = useState(null);
   const today = getTodayDate();
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchDailyReport();
-    }, [])
-  );
-
-  const fetchDailyReport = async () => {
+  const fetchDailyReport = useCallback(async () => {
     try {
       setLoading(true);
       const response = await voucherAPI.getDailyReport(today);
@@ -41,13 +36,17 @@ export default function HomeScreen() {
         setReport(response.data);
       }
     } catch (error) {
-      console.error('Error fetching report:', error);
-      // Error handling sudah di interceptor, tidak perlu Alert di sini
-      // User akan melihat loading state yang hilang jika error
+      logger.error('Error fetching report:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [today]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDailyReport();
+    }, [fetchDailyReport])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -178,11 +177,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
+    paddingBottom: getPadding(theme.spacing.lg),
   },
   headerCard: {
-    marginBottom: theme.spacing.lg,
-    elevation: 3,
+    marginBottom: getSpacing(theme.spacing.md),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    borderRadius: theme.borderRadius.md,
   },
   headerContent: {
     flexDirection: 'row',
@@ -199,15 +203,15 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   generateButton: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
+    padding: getPadding(theme.spacing.md),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: getSpacing(theme.spacing.md),
     elevation: 3,
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   generateButtonText: {
     color: '#fff',
@@ -216,7 +220,8 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: theme.spacing.lg,
+    marginBottom: getSpacing(theme.spacing.md),
+    marginHorizontal: -theme.spacing.xs,
   },
   loader: {
     marginVertical: theme.spacing.xl,
@@ -228,7 +233,9 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     alignItems: 'center',
     marginTop: theme.spacing.md,
-    elevation: 2,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
   },
   rateLabel: {
     color: theme.colors.textSecondary,
@@ -241,11 +248,14 @@ const styles = StyleSheet.create({
   reportButton: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 2,
+    elevation: 4,
+    marginTop: getSpacing(theme.spacing.sm),
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
   },
   reportButtonText: {
     color: theme.colors.primary,

@@ -16,8 +16,8 @@ export default function StatusBadge({ status, style }) {
       case 'redeemed':
         return {
           label: 'SUDAH DIGUNAKAN',
-          color: theme.colors.textSecondary,
-          bgColor: theme.colors.textSecondary + '20',
+          color: theme.colors.primary, // Gold
+          bgColor: theme.colors.primary + '20',
         };
       case 'expired':
         return {

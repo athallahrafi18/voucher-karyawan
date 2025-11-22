@@ -17,7 +17,8 @@ import { voucherAPI, employeeAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatCurrency, formatDate, getTodayDate } from '../../utils/formatters';
 import { getPrinterSettings } from '../../utils/storage';
-import { isTablet, getFontSize } from '../../utils/device';
+import { isTablet, getFontSize, getPadding, getSpacing } from '../../utils/device';
+import logger from '../../utils/logger';
 
 export default function GenerateVoucherScreen() {
   const navigation = useNavigation();
@@ -56,7 +57,7 @@ export default function GenerateVoucherScreen() {
         setSelectedEmployeeIds(withoutVoucher);
       }
     } catch (error) {
-      console.error('Error loading employees:', error);
+      logger.error('Error loading employees:', error);
       Alert.alert('Error', 'Gagal memuat data karyawan');
     } finally {
       setLoadingEmployees(false);
@@ -234,7 +235,7 @@ export default function GenerateVoucherScreen() {
           );
         }
       } catch (printError) {
-        console.error('Print error:', printError);
+        logger.error('Print error:', printError);
         let message = `${count} voucher berhasil dibuat di database`;
         if (skipped > 0) {
           message += `\n(${skipped} karyawan sudah punya voucher hari ini)`;
@@ -267,7 +268,7 @@ export default function GenerateVoucherScreen() {
         loadEmployees(); // Refresh list
       }
     } catch (error) {
-      console.error('Generate error:', error);
+      logger.error('Generate error:', error);
       Alert.alert('Error', error.message || 'Gagal generate voucher');
     } finally {
       setLoading(false);
@@ -403,6 +404,7 @@ export default function GenerateVoucherScreen() {
                   display="default"
                   onChange={handleDateChange}
                   minimumDate={new Date()}
+                  maximumDate={new Date()}
                 />
               )}
             </Card.Content>
@@ -507,11 +509,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
+    paddingBottom: getPadding(theme.spacing.xl),
   },
   card: {
-    marginBottom: theme.spacing.lg,
-    elevation: 2,
+    marginBottom: getSpacing(theme.spacing.md),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    borderRadius: theme.borderRadius.md,
   },
   label: {
     color: theme.colors.text,
@@ -565,7 +572,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   employeeList: {
-    maxHeight: isTablet() ? 400 : 300,
+    maxHeight: isTablet() ? 400 : 250,
     marginTop: theme.spacing.sm,
   },
   employeeItem: {
@@ -622,7 +629,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.sm,
     paddingHorizontal: theme.spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.textSecondary + '30',
+    borderColor: theme.colors.primary + '40',
   },
   dateText: {
     color: theme.colors.text,
@@ -657,15 +664,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   generateButton: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
+    padding: getPadding(theme.spacing.md),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: theme.spacing.md,
+    marginTop: getSpacing(theme.spacing.sm),
     elevation: 3,
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   buttonDisabled: {
     opacity: 0.6,

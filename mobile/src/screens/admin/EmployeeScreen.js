@@ -16,8 +16,9 @@ import { Card, ActivityIndicator, FAB, TextInput, Button } from 'react-native-pa
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { employeeAPI } from '../../services/api';
 import { theme } from '../../config/theme';
-import { isTablet, getFontSize } from '../../utils/device';
+import { isTablet, getFontSize, getPadding, getSpacing } from '../../utils/device';
 import Navbar from '../../components/Navbar';
+import logger from '../../utils/logger';
 
 export default function EmployeeScreen() {
   const [employees, setEmployees] = useState([]);
@@ -40,7 +41,7 @@ export default function EmployeeScreen() {
         setEmployees(response.data);
       }
     } catch (error) {
-      console.error('Error loading employees:', error);
+      logger.error('Error loading employees:', error);
       Alert.alert('Error', 'Gagal memuat data karyawan');
     } finally {
       setLoading(false);
@@ -79,7 +80,7 @@ export default function EmployeeScreen() {
         loadEmployees();
       }
     } catch (error) {
-      console.error('Error adding employee:', error);
+      logger.error('Error adding employee:', error);
       Alert.alert('Error', error.response?.data?.message || 'Gagal menambahkan karyawan');
     } finally {
       setSaving(false);
@@ -103,7 +104,7 @@ export default function EmployeeScreen() {
                 loadEmployees();
               }
             } catch (error) {
-              console.error('Error deleting employee:', error);
+              logger.error('Error deleting employee:', error);
               Alert.alert('Error', 'Gagal menghapus karyawan');
             }
           },
@@ -281,11 +282,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContent: {
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
   },
   employeeCard: {
-    marginBottom: theme.spacing.md,
-    elevation: 2,
+    marginBottom: getSpacing(theme.spacing.sm),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
+    borderRadius: theme.borderRadius.md,
   },
   employeeRow: {
     flexDirection: 'row',

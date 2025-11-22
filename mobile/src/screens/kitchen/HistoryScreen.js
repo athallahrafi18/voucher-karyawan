@@ -15,9 +15,10 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { voucherAPI } from '../../services/api';
 import { theme } from '../../config/theme';
 import { formatDateTime, formatDate, formatDateForAPI } from '../../utils/formatters';
-import { isTablet, getFontSize } from '../../utils/device';
+import { isTablet, getFontSize, getPadding, getSpacing } from '../../utils/device';
 import StatusBadge from '../../components/StatusBadge';
 import Navbar from '../../components/Navbar';
+import logger from '../../utils/logger';
 
 const FILTERS = ['All', 'Valid', 'Invalid'];
 
@@ -60,7 +61,7 @@ export default function HistoryScreen() {
         setHistory([]);
       }
     } catch (error) {
-      console.error('Error loading scan history:', error);
+      logger.error('Error loading scan history:', error);
       setHistory([]);
     } finally {
       setLoading(false);
@@ -177,6 +178,7 @@ export default function HistoryScreen() {
           value={selectedDate}
           mode="date"
           display="default"
+          maximumDate={new Date()}
           onChange={(event, date) => {
             setShowDatePicker(false);
             if (date) {
@@ -232,7 +234,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   dateFilterContainer: {
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
     paddingBottom: theme.spacing.sm,
   },
   dateButton: {
@@ -240,12 +242,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: theme.colors.textSecondary + '30',
-    gap: theme.spacing.sm,
+    borderColor: theme.colors.primary + '40',
+    gap: theme.spacing.xs,
+    minHeight: 44,
   },
   dateText: {
     color: theme.colors.text,
@@ -255,19 +258,20 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     flexDirection: 'row',
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
     paddingTop: theme.spacing.sm,
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   filterButton: {
     flex: 1,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.surface,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.textSecondary + '30',
+    borderColor: theme.colors.primary + '40',
+    minHeight: 40,
   },
   filterButtonActive: {
     backgroundColor: theme.colors.primary,
@@ -281,7 +285,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   listContent: {
-    padding: theme.spacing.md,
+    padding: getPadding(theme.spacing.md),
   },
   emptyContainer: {
     flex: 1,
@@ -290,7 +294,11 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     margin: theme.spacing.xl,
-    elevation: 1,
+    elevation: 2,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '20',
+    borderRadius: theme.borderRadius.md,
   },
   emptyIcon: {
     alignSelf: 'center',
@@ -311,8 +319,12 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   card: {
-    marginBottom: theme.spacing.md,
-    elevation: 2,
+    marginBottom: getSpacing(theme.spacing.sm),
+    elevation: 4,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '30',
+    borderRadius: theme.borderRadius.md,
   },
   itemHeader: {
     flexDirection: 'row',

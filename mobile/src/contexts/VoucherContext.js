@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext } from 'react';
 import { voucherAPI } from '../services/api';
+import logger from '../utils/logger';
 
 const VoucherContext = createContext();
 
@@ -16,7 +17,7 @@ export const VoucherProvider = ({ children }) => {
       }
       return response;
     } catch (error) {
-      console.error('Error fetching daily report:', error);
+      logger.error('Error fetching daily report:', error);
       throw error;
     } finally {
       setIsLoading(false);
