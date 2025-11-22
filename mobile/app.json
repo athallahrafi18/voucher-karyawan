@@ -29,7 +29,9 @@
       "permissions": [
         "CAMERA",
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
       "blockedPermissions": [],
       "navigationBar": {
@@ -53,9 +55,11 @@
       "expo-navigation-bar"
     ],
     "extra": {
+      "expo-navigation-bar": {},
       "eas": {
-        "projectId": "eaad4c57-63a8-4d13-b5ce-7a6c82406ffe"
+        "projectId": "6dcea528-90f3-4e3c-9790-3de58948e31a"
       }
-    }
+    },
+    "owner": "rakankuphi"
   }
 }
